@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Language Portal</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', sans-serif;
+            background: #f0f4f8;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        .language-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            justify-content: center;
+        }
+
+        .language-buttons button {
+            padding: 12px 24px;
+            font-size: 16px;
+            background-color: #0078d4;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+
+        .language-buttons button:hover {
+            background-color: #005a9e;
+        }
+
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.4);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+            z-index: 999;
+        }
+
+        .overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .popup {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0.8);
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            width: 320px;
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.3s ease;
+            z-index: 1000;
+        }
+
+        .popup.active {
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1);
+            pointer-events: auto;
+        }
+
+        .popup h3 {
+            margin-top: 0;
+            font-size: 20px;
+            color: #0078d4;
+            text-align: center;
+        }
+
+        .popup .close-btn {
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            font-size: 20px;
+            cursor: pointer;
+            color: #999;
+        }
+
+        .popup .link-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .popup .link-list a {
+            text-decoration: none;
+            padding: 10px;
+            background-color: #e6f0ff;
+            border: 1px solid #0078d4;
+            border-radius: 6px;
+            color: #0078d4;
+            font-weight: 500;
+            text-align: center;
+            transition: background 0.3s ease;
+        }
+
+        .popup .link-list a:hover {
+            background-color: #cce0ff;
+        }
+
+        /* Gradient background */
+        body {
+            margin: 0;
+            font-family: 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #f6d365 0%, #fda085 100%);
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn 1s ease-in;
+        }
+
+        /* Fade-in animation */
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: scale(0.95);
+            }
+
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        /* Card container */
+        .card {
+            background: #ffffffdd;
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 40px 30px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+            text-align: center;
+            width: 90%;
+            max-width: 400px;
+            transition: transform 0.3s ease;
+        }
+
+        .card:hover {
+            transform: scale(1.02);
+        }
+
+        /* Title */
+        .card p {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 20px;
+        }
+
+        /* Dropdown styling */
+        #languageSelect {
+            width: 100%;
+            padding: 14px 18px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #ffffff 0%, #f9f9f9 100%);
+            color: #333;
+            font-size: 16px;
+            font-weight: 500;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            border: 1px solid #ddd;
+            transition: all 0.3s ease;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 140 140' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M70 90 L40 60 H100 Z' fill='%23333'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 16px center;
+            background-size: 12px;
+        }
+
+        #languageSelect:hover {
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+            transform: scale(1.01);
+        }
+
+        #languageSelect:focus {
+            outline: none;
+            border-color: #facc15;
+            box-shadow: 0 0 0 4px rgba(250, 204, 21, 0.3);
+            background-color: #fff;
+        }
+    </style>
+
+
+</head>
+
+<body>
+
+    <!-- <div class="language-buttons">
+        <button onclick="showPopup('English')">English</button>
+        <button onclick="showPopup('French')">French</button>
+        <button onclick="showPopup('Spanish')">Spanish</button>
+        <button onclick="showPopup('Chinese')">Chinese</button>
+        <button onclick="showPopup('Japanese')">Japanese</button>
+        <button onclick="showPopup('Telugu')">Telugu</button>
+        <button onclick="showPopup('Hindi')">Hindi</button>
+    </div> -->
+
+
+
+
+    <div class="card">
+        <p>🌐 Choose Your Language:</p>
+        <select id="languageSelect">
+            <option value="">-- Select Language --</option>
+            <option value="russian">Russian</option>
+            <option value="turkish">Turkish</option>
+            <option value="french">French</option>
+            <option value="german">German</option>
+            <option value="portuguese">Portuguese</option>
+            <option value="spanish">Spanish</option>
+            <option value="italian">Italian</option>
+        </select>
+    </div>
+
+    <div class="overlay" id="overlay" onclick="closePopup()"></div>
+
+    <div class="popup" id="popup">
+        <span class="close-btn" onclick="closePopup()">✖</span>
+        <h3 id="popup-title"></h3>
+        <div class="link-list" id="popup-links"></div>
+    </div>
+
+    <script>
+        const popup = document.getElementById('popup');
+        const overlay = document.getElementById('overlay');
+        const popupTitle = document.getElementById('popup-title');
+        const popupLinks = document.getElementById('popup-links');
+
+        const contentMap = {
+            English: [
+                { name: 'Advisor---Review-Detective', url: 'https://sandhyajobbin.github.io/Advisor---Review-Detective/' },
+                { name: 'Exam Enroll', url: 'https://example.com/exam' },
+                { name: 'Mock Interview', url: 'https://example.com/interview' }
+            ],
+            French: [
+                { name: 'Flex-Flag', url: 'https://sandhyajobbin.github.io/Flex-Flag/' },
+                { name: 'Examen', url: 'https://example.com/examen' }
+            ],
+            Spanish: [
+                { name: 'Evaluación', url: 'https://example.com/evaluacion' },
+                { name: 'Entrevista', url: 'https://example.com/entrevista' }
+            ],
+            Chinese: [
+                { name: '评估', url: 'https://example.com/pinggu' },
+                { name: '考试报名', url: 'https://example.com/kaoshi' }
+            ],
+            Japanese: [
+                { name: '評価', url: 'https://example.com/hyouka' },
+                { name: '模擬面接', url: 'https://example.com/mogi' }
+            ],
+            Telugu: [
+                { name: 'అంచనా', url: 'https://example.com/anchana' },
+                { name: 'పరీక్ష', url: 'https://example.com/pariksha' }
+            ],
+            Hindi: [
+                { name: 'मूल्यांकन', url: 'https://example.com/mulyankan' },
+                { name: 'परीक्षा नामांकन', url: 'https://example.com/pariksha' }
+            ]
+        };
+
+        function showPopup(language) {
+            popupTitle.textContent = language;
+            popupLinks.innerHTML = '';
+            contentMap[language].forEach(item => {
+                const link = document.createElement('a');
+                link.href = item.url;
+                link.textContent = item.name;
+                link.target = '_blank'; // Opens in new tab
+                popupLinks.appendChild(link);
+            });
+            popup.classList.add('active');
+            overlay.classList.add('active');
+        }
+
+        function closePopup() {
+            popup.classList.remove('active');
+            overlay.classList.remove('active');
+        }
+    </script>
+
+    <script>
+        const languageURLs = {
+            russian: "Idiom Island Russian.html",
+            turkish: "Idiom Island Turkish.html",
+            spanish: "Idiom New Spanish.html",
+            french: "Idiom New French.html",
+            german: "Idiom New German.html",
+            portuguese: "Idiom New Portuguese.html",
+            italian: "Idiom_Island_Italian.html"
+        };
+
+        document.getElementById("languageSelect").addEventListener("change", function () {
+            const selectedLang = this.value;
+            if (languageURLs[selectedLang]) {
+                window.location.href = languageURLs[selectedLang];
+            }
+        });
+    </script>
+
+    <script>
+        window.addEventListener("load", () => {
+            setTimeout(() => {
+                document.getElementById("loader").style.display = "none";
+                document.getElementById("app").classList.remove("hidden");
+            }, 1500); // Delay in milliseconds
+        });
+    </script>
+
+
+</body>
+
+</html>
