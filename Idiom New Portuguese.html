@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Aventura na Ilha dos Idiomas (PT corrigido)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Fredoka+One:wght@400&family=Inter:wght@400;500;600;700&display=swap');
+    .game-font { font-family: 'Fredoka One', cursive; }
+    .body-font { font-family: 'Inter', sans-serif; }
+    .island-bg { background: linear-gradient(135deg,#60a5fa 0%,#34d399 100%); min-height:100vh; }
+    .zone-card { transition: all .3s ease; }
+    .zone-card:hover { transform: translateY(-5px); box-shadow:0 20px 40px rgba(0,0,0,.1); }
+    .zone-locked { opacity:.6; filter:grayscale(100%); }
+    .progress-bar { transition: width .5s ease; }
+    .drag-item { cursor: grab; }
+    .drop-zone { min-height: 60px; transition: all .2s ease; }
+    .drop-zone.drag-over { background-color:#e0f2fe; border-color:#0284c7; }
+    .correct-match { background-color:#dcfce7!important; border-color:#16a34a!important; }
+    .wrong-match   { background-color:#fef2f2!important; border-color:#dc2626!important; }
+    @keyframes bounce { 0%,20%,50%,80%,100%{transform:translateY(0);}40%{transform:translateY(-10px);}60%{transform:translateY(-5px);} }
+    .bounce-animation { animation:bounce .6s; }
+  </style>
+</head>
+<body class="island-bg body-font">
+<div id="app" class="min-h-screen">
+
+  <!-- MENU PRINCIPAL -->
+  <div id="mainMenu" class="container mx-auto px-4 py-8">
+    <div class="text-center mb-12">
+      <h1 class="game-font text-6xl text-white mb-4">🏝️ Ilha dos Modismos (PT)</h1>
+      <p class="text-xl text-white/80 mb-8">Domine 100 expressões em português com desafios divertidos!</p>
+      <div class="bg-white/20 backdrop-blur-sm rounded-2xl p-6 max-w-md mx-auto mb-8">
+        <div class="flex justify-between items-center mb-4">
+          <span class="text-white font-semibold">Pontuação total:</span>
+          <span id="totalScore" class="text-2xl font-bold text-yellow-300">0</span>
+        </div>
+        <div class="w-full bg-white/20 rounded-full h-3">
+          <div id="overallProgress" class="progress-bar bg-gradient-to-r from-yellow-400 to-orange-500 h-3 rounded-full" style="width:0%"></div>
+        </div>
+        <p class="text-white/80 text-sm mt-2">Progresso rumo a Mestre de Modismos</p>
+      </div>
+    </div>
+
+    <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
+      <div class="zone-card bg-white rounded-2xl p-6 shadow-xl" data-zone="1">
+        <div class="text-center">
+          <div class="text-4xl mb-4">🌟</div>
+          <h3 class="game-font text-2xl text-sky-600 mb-2">Baía dos Pares</h3>
+          <p class="text-gray-600 mb-4">Modismo ↔ Significado</p>
+          <div class="flex justify-between text-sm text-gray-500 mb-4">
+            <span>Máx.: 100 pts</span>
+            <span id="zone1Score">Pts: 0</span>
+          </div>
+          <button onclick="startZone(1)" class="bg-sky-500 hover:bg-sky-600 text-white px-6 py-2 rounded-full font-semibold">Iniciar</button>
+        </div>
+      </div>
+
+      <div class="zone-card bg-white rounded-2xl p-6 shadow-xl zone-locked" data-zone="2">
+        <div class="text-center">
+          <div class="text-4xl mb-4">❓</div>
+          <h3 class="game-font text-2xl text-gray-400 mb-2">Falésia V/F</h3>
+          <p class="text-gray-400 mb-4">Verdadeiro ou Falso</p>
+          <div class="flex justify-between text-sm text-gray-400 mb-4">
+            <span>Máx.: 100 pts</span>
+            <span id="zone2Score">Pts: 0</span>
+          </div>
+          <button disabled class="bg-gray-300 text-gray-500 px-6 py-2 rounded-full cursor-not-allowed">🔒 Bloqueado</button>
+        </div>
+      </div>
+
+      <div class="zone-card bg-white rounded-2xl p-6 shadow-xl zone-locked" data-zone="3">
+        <div class="text-center">
+          <div class="text-4xl mb-4">✍️</div>
+          <h3 class="game-font text-2xl text-gray-400 mb-2">Tesouro Escondido</h3>
+          <p class="text-gray-400 mb-4">Complete as frases</p>
+          <div class="flex justify-between text-sm text-gray-400 mb-4">
+            <span>Máx.: 150 pts</span>
+            <span id="zone3Score">Pts: 0</span>
+          </div>
+          <button disabled class="bg-gray-300 text-gray-500 px-6 py-2 rounded-full cursor-not-allowed">🔒 Bloqueado</button>
+        </div>
+      </div>
+
+      <div class="zone-card bg-white rounded-2xl p-6 shadow-xl zone-locked" data-zone="4">
+        <div class="text-center">
+          <div class="text-4xl mb-4">⚡</div>
+          <h3 class="game-font text-2xl text-gray-400 mb-2">Relâmpago</h3>
+          <p class="text-gray-400 mb-4">Quiz cronometrado</p>
+          <div class="flex justify-between text-sm text-gray-400 mb-4">
+            <span>Máx.: 100 pts</span>
+            <span id="zone4Score">Pts: 0</span>
+          </div>
+          <button disabled class="bg-gray-300 text-gray-500 px-6 py-2 rounded-full cursor-not-allowed">🔒 Bloqueado</button>
+        </div>
+      </div>
+
+      <div class="zone-card bg-white rounded-2xl p-6 shadow-xl zone-locked" data-zone="5">
+        <div class="text-center">
+          <div class="text-4xl mb-4">🌀</div>
+          <h3 class="game-font text-2xl text-gray-400 mb-2">Labirinto de Modismos</h3>
+          <p class="text-gray-400 mb-4">Cenários práticos</p>
+          <div class="flex justify-between text-sm text-gray-400 mb-4">
+            <span>Máx.: 150 pts</span>
+            <span id="zone5Score">Pts: 0</span>
+          </div>
+          <button disabled class="bg-gray-300 text-gray-500 px-6 py-2 rounded-full cursor-not-allowed">🔒 Bloqueado</button>
+        </div>
+      </div>
+
+      <div class="zone-card bg-gradient-to-br from-yellow-400 to-orange-500 rounded-2xl p-6 shadow-xl">
+        <div class="text-center text-white">
+          <div class="text-4xl mb-4">🏆</div>
+          <h3 class="game-font text-2xl mb-2">Seu Rango</h3>
+          <p id="playerRank" class="text-lg font-semibold mb-2">Continue praticando 💡</p>
+          <div class="text-sm opacity-90">
+            <div>🏆 500+ pts: Mestre</div>
+            <div>🧭 400+ pts: Explorador</div>
+            <div>💡 0+ pts: Aprendiz</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TELA DE JOGO -->
+  <div id="gameScreen" class="hidden container mx-auto px-4 py-8">
+    <div class="bg-white/20 backdrop-blur-sm rounded-2xl p-4 mb-6 flex justify-between items-center">
+      <button onclick="returnToMenu()" class="bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-lg">← Voltar</button>
+      <div class="text-center">
+        <h2 id="zoneTitle" class="game-font text-2xl text-white"></h2>
+        <p id="zoneDescription" class="text-white/80"></p>
+      </div>
+      <div class="text-right text-white font-semibold">
+        Pts: <span id="currentScore">0</span>
+        <div id="timerDisplay" class="text-yellow-300 font-bold hidden"></div>
+      </div>
+    </div>
+
+    <!-- ZONA 1: PARES -->
+    <div id="zone1Game" class="hidden">
+      <div class="bg-white rounded-2xl p-6 shadow-xl">
+        <div class="mb-6">
+          <div class="flex justify-between items-center mb-2">
+            <span class="font-semibold">Progresso</span>
+            <span id="matchProgress">0/10</span>
+          </div>
+          <div class="w-full bg-gray-200 rounded-full h-3">
+            <div id="matchProgressBar" class="progress-bar bg-sky-500 h-3 rounded-full" style="width:0%"></div>
+          </div>
+        </div>
+        <div class="grid md:grid-cols-2 gap-8">
+          <div>
+            <h3 class="font-bold text-lg text-center mb-4">Modismos</h3>
+            <div id="idiomsColumn" class="space-y-3"></div>
+          </div>
+          <div>
+            <h3 class="font-bold text-lg text-center mb-4">Significados</h3>
+            <div id="meaningsColumn" class="space-y-3"></div>
+          </div>
+        </div>
+        <div class="text-center mt-6">
+          <button id="checkMatches" onclick="checkMatches()" class="bg-green-500 hover:bg-green-600 text-white px-8 py-3 rounded-full font-semibold">Verificar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ZONA 2: V/F -->
+    <div id="zone2Game" class="hidden">
+      <div class="bg-white rounded-2xl p-6 shadow-xl max-w-2xl mx-auto">
+        <div class="mb-6">
+          <div class="flex justify-between items-center mb-2">
+            <span class="font-semibold">Pergunta <span id="tfQuestionNum">1</span>/10</span>
+            <span class="text-red-500 font-semibold">Vidas: <span id="livesCount">3</span></span>
+          </div>
+          <div class="w-full bg-gray-200 rounded-full h-3">
+            <div id="tfProgressBar" class="progress-bar bg-purple-500 h-3 rounded-full" style="width:10%"></div>
+          </div>
+        </div>
+        <div class="text-center mb-8">
+          <div class="bg-blue-50 rounded-xl p-6 mb-6">
+            <h3 id="tfIdiom" class="text-2xl font-bold text-blue-600 mb-4"></h3>
+            <p id="tfDefinition" class="text-lg text-gray-700"></p>
+          </div>
+          <div class="space-x-4">
+            <button onclick="answerTrueFalse(true)" class="bg-green-500 hover:bg-green-600 text-white px-8 py-4 rounded-full font-bold">VERDADEIRO</button>
+            <button onclick="answerTrueFalse(false)" class="bg-red-500 hover:bg-red-600 text-white px-8 py-4 rounded-full font-bold">FALSO</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ZONA 3: LACUNAS -->
+    <div id="zone3Game" class="hidden">
+      <div class="bg-white rounded-2xl p-6 shadow-xl max-w-2xl mx-auto">
+        <div class="mb-6">
+          <div class="flex justify-between items-center mb-2">
+            <span class="font-semibold">Pergunta <span id="fibQuestionNum">1</span>/10</span>
+          </div>
+          <div class="w-full bg-gray-200 rounded-full h-3">
+            <div id="fibProgressBar" class="progress-bar bg-green-500 h-3 rounded-full" style="width:10%"></div>
+          </div>
+        </div>
+        <div class="text-center mb-8">
+          <div class="bg-green-50 rounded-xl p-6 mb-6">
+            <p id="fibSentence" class="text-lg text-gray-700 mb-4"></p>
+            <select id="fibSelect" class="border-2 border-green-300 rounded-lg px-4 py-2 text-lg font-semibold bg-white">
+              <option value="">Escolha uma expressão…</option>
+            </select>
+          </div>
+          <button onclick="submitFillBlank()" class="bg-green-500 hover:bg-green-600 text-white px-8 py-3 rounded-full font-semibold">Responder</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ZONA 4: RELÂMPAGO -->
+    <div id="zone4Game" class="hidden">
+      <div class="bg-white rounded-2xl p-6 shadow-xl max-w-2xl mx-auto">
+        <div class="mb-6">
+          <div class="flex justify-between items-center mb-2">
+            <span class="font-semibold">Pergunta <span id="lrQuestionNum">1</span>/10</span>
+            <span id="lrTimer" class="text-2xl font-bold text-red-500">60</span>
+          </div>
+          <div class="w-full bg-gray-200 rounded-full h-3">
+            <div id="lrProgressBar" class="progress-bar bg-yellow-500 h-3 rounded-full" style="width:10%"></div>
+          </div>
+        </div>
+        <div class="text-center mb-8">
+          <div class="bg-yellow-50 rounded-xl p-6 mb-6">
+            <h3 id="lrIdiom" class="text-2xl font-bold text-yellow-600 mb-4"></h3>
+          </div>
+          <div id="lrOptions" class="grid grid-cols-2 gap-4"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ZONA 5: CENÁRIOS -->
+    <div id="zone5Game" class="hidden">
+      <div class="bg-white rounded-2xl p-6 shadow-xl max-w-3xl mx-auto">
+        <div class="mb-6">
+          <div class="flex justify-between items-center mb-2">
+            <span class="font-semibold">Cenário <span id="scenarioNum">1</span>/2</span>
+            <span class="font-semibold">Desafio Final! 🌟</span>
+          </div>
+          <div class="w-full bg-gray-200 rounded-full h-3">
+            <div id="scenarioProgressBar" class="progress-bar bg-purple-500 h-3 rounded-full" style="width:50%"></div>
+          </div>
+        </div>
+        <div class="mb-8">
+          <div class="bg-purple-50 rounded-xl p-6 mb-6">
+            <h3 id="scenarioTitle" class="text-xl font-bold text-purple-600 mb-4"></h3>
+            <p id="scenarioDescription" class="text-gray-700 mb-4"></p>
+            <p id="scenarioQuestion" class="font-semibold text-gray-800"></p>
+          </div>
+          <div id="scenarioOptions" class="space-y-3"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL RESULTADOS -->
+    <div id="resultsModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div class="bg-white rounded-2xl p-8 max-w-md mx-4 text-center">
+        <div id="resultsIcon" class="text-6xl mb-4"></div>
+        <h3 id="resultsTitle" class="game-font text-2xl mb-4"></h3>
+        <p id="resultsMessage" class="text-gray-600 mb-6"></p>
+        <div id="resultsScore" class="text-3xl font-bold text-sky-600 mb-6"></div>
+        <button onclick="closeResults()" class="bg-sky-500 hover:bg-sky-600 text-white px-8 py-3 rounded-full font-semibold">Continuar</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ===== ESTADO CENTRAL =====
+const gameData = {
+  totalScore: 0,
+  zoneScores: [0,0,0,0,0],
+  unlockedZones: [true,false,false,false,false],
+  currentZone: null,
+  currentQuestion: 0,
+  gameState: {}
+};
+
+const zoneInfo = {
+  1:{ title:'🌟 Baía dos Pares',      desc:'Modismo ↔ Significado', max:100 },
+  2:{ title:'❓ Falésia V/F',          desc:'Verdadeiro ou Falso',    max:100 },
+  3:{ title:'✍️ Tesouro Escondido',   desc:'Complete as frases',      max:150 },
+  4:{ title:'⚡ Relâmpago',            desc:'Quiz cronometrado',       max:100 },
+  5:{ title:'🌀 Labirinto de Modismos',desc:'Cenários práticos',       max:150 }
+};
+
+// ===== DADOS (PT) =====
+const idiomsData = {
+  zone1:[
+    { idiom:'Chutar o balde',            meaning:'Desistir de algo; perder a paciência' },
+    { idiom:'Cair a ficha',               meaning:'Finalmente entender algo' },
+    { idiom:'Fazer vista grossa',        meaning:'Ignorar voluntariamente' },
+    { idiom:'Custar os olhos da cara',   meaning:'Ser muito caro' },
+    { idiom:'Enfiar o pé na jaca',       meaning:'Exagerar; cometer excessos' },
+    { idiom:'Pisar na bola',             meaning:'Cometer um erro' },
+    { idiom:'Quebrar o gelo',            meaning:'Superar o constrangimento inicial' },
+    { idiom:'Dar o braço a torcer',      meaning:'Reconhecer que está errado' },
+    { idiom:'Segurar vela',              meaning:'Ser a pessoa sobrando num encontro' },
+    { idiom:'Tomar as rédeas',           meaning:'Assumir o controle de uma situação' }
+  ],
+  zone2:[
+    { idiom:'Não ter papas na língua', meaning:'Falar com franqueza, sem rodeios', correct:true },
+    { idiom:'Chover no molhado',       meaning:'Repetir algo óbvio',               correct:true },
+    { idiom:'Estar nas nuvens',        meaning:'Estar muito focado',               correct:false },
+    { idiom:'Dar com a língua nos dentes', meaning:'Revelar um segredo',           correct:true },
+    { idiom:'Puxar sardinha para o seu lado', meaning:'Agir em benefício próprio', correct:true },
+    { idiom:'Fazer tempestade em copo d’água', meaning:'Exagerar um problema pequeno', correct:true },
+    { idiom:'Matar cachorro a grito',   meaning:'Fazer algo impossível',           correct:false },
+    { idiom:'Botar a mão no fogo',      meaning:'Confiar plenamente em alguém',    correct:true },
+    { idiom:'Colocar panos quentes',    meaning:'Acalmar uma situação',            correct:true },
+    { idiom:'Ficar de queixo caído',    meaning:'Ficar muito surpreso',            correct:true }
+  ],
+  zone3:[
+    { sentence:'Ele exagerou na festa e acabou _______.', answer:'enfiar o pé na jaca', options:['chutar o balde','enfiar o pé na jaca','dar o braço a torcer','tomar as rédeas'] },
+    { sentence:'Depois de muita discussão, ela decidiu _______.', answer:'dar o braço a torcer', options:['fazer vista grossa','dar o braço a torcer','quebrar o gelo','pisar na bola'] },
+    { sentence:'Quando ouvi a explicação, finalmente _______.', answer:'caiu a ficha', options:['caiu a ficha','custou os olhos da cara','segurou vela','choveu no molhado'] },
+    { sentence:'O celular novo _______; melhor esperar uma promoção.', answer:'custa os olhos da cara', options:['custa os olhos da cara','faz vista grossa','puxa sardinha','mata cachorro a grito'] },
+    { sentence:'Para iniciar a conversa, tente _______.', answer:'quebrar o gelo', options:['quebrar o gelo','pisar na bola','tomar as rédeas','colocar panos quentes'] },
+    { sentence:'Ele _______ quando esqueceu a apresentação.', answer:'pisou na bola', options:['pisou na bola','tomou as rédeas','segurou vela','caiu a ficha'] },
+    { sentence:'No encontro dos amigos, eu _______.', answer:'segurei vela', options:['segurei vela','chutei o balde','dei o braço a torcer','choveu no molhado'] },
+    { sentence:'Chegou a hora de _______ do projeto.', answer:'tomar as rédeas', options:['tomar as rédeas','fazer vista grossa','colocar panos quentes','puxar sardinha'] },
+    { sentence:'Ele _______ e admitiu que estava errado.', answer:'deu o braço a torcer', options:['deu o braço a torcer','chutou o balde','ficou de queixo caído','segurou vela'] },
+    { sentence:'Ao ver a notícia, todos _______.', answer:'ficaram de queixo caído', options:['ficaram de queixo caído','pisaram na bola','tomaram as rédeas','fizeram vista grossa'] }
+  ],
+  zone4:[], // gerado a partir de zone1
+  zone5:[
+    {
+      title:'Reunião de última hora',
+      description:'Sua equipe precisa decidir rápido como reagir a um problema com um cliente.',
+      question:'Qual expressão melhor descreve a ação recomendada?',
+      options:[
+        { text:'Tomar as rédeas', correct:true },
+        { text:'Segurar vela', correct:false },
+        { text:'Chutar o balde', correct:false },
+        { text:'Fazer vista grossa', correct:false }
+      ]
+    },
+    {
+      title:'Primeiro encontro',
+      description:'O clima está tímido e silencioso.',
+      question:'O que fazer para começar a conversa?',
+      options:[
+        { text:'Quebrar o gelo', correct:true },
+        { text:'Puxar sardinha para o seu lado', correct:false },
+        { text:'Cair a ficha', correct:false },
+        { text:'Chover no molhado', correct:false }
+      ]
+    }
+  ]
+};
+
+// Prepara questões da Zona 4 com base na Zona 1
+idiomsData.zone4 = idiomsData.zone1.slice(0,10).map((it, i) => ({
+  idiom: it.idiom,
+  options: shuffle([it.meaning, ...shuffle(idiomsData.zone1.map(m=>m.meaning)).filter(m=>m!==it.meaning).slice(0,3)])
+}));
+
+// ===== UTIL =====
+function shuffle(arr){
+  const a = arr.slice();
+  for(let i=a.length-1;i>0;i--){
+    const j = Math.floor(Math.random()*(i+1));
+    [a[i],a[j]] = [a[j],a[i]];
+  }
+  return a;
+}
+
+// ===== NAVEGAÇÃO =====
+function startZone(z){
+  gameData.currentZone = z;
+  document.getElementById('mainMenu').classList.add('hidden');
+  document.getElementById('gameScreen').classList.remove('hidden');
+  document.getElementById('zoneTitle').textContent = zoneInfo[z].title;
+  document.getElementById('zoneDescription').textContent = zoneInfo[z].desc;
+  document.getElementById('currentScore').textContent = gameData.zoneScores[z-1];
+  showOnly(`#zone${z}Game`);
+  if(z===1) setupZone1();
+  if(z===2) setupZone2();
+  if(z===3) setupZone3();
+  if(z===4) setupZone4();
+  if(z===5) setupZone5();
+}
+
+function returnToMenu(){
+  document.getElementById('gameScreen').classList.add('hidden');
+  document.getElementById('mainMenu').classList.remove('hidden');
+  showOnly();
+}
+
+function showOnly(sel){
+  ['zone1Game','zone2Game','zone3Game','zone4Game','zone5Game'].forEach(id=>{
+    const el = document.getElementById(id);
+    if(!el) return;
+    if(sel && `#${id}`===sel) el.classList.remove('hidden'); else el.classList.add('hidden');
+  });
+}
+
+function addScore(zoneIndex, pts){
+  gameData.zoneScores[zoneIndex]+=pts;
+  gameData.totalScore += pts;
+  document.getElementById('currentScore').textContent = gameData.zoneScores[zoneIndex];
+  document.getElementById('totalScore').textContent = gameData.totalScore;
+  const percent = Math.min(100, (gameData.totalScore/500)*100);
+  document.getElementById('overallProgress').style.width = `${percent}%`;
+  document.getElementById(`zone${zoneIndex+1}Score`).textContent = `Pts: ${gameData.zoneScores[zoneIndex]}`;
+}
+
+function unlockNextZone(zone){
+  if(zone<5){
+    gameData.unlockedZones[zone] = true;
+    const card = document.querySelector(`[data-zone="${zone+1}"]`);
+    if(card){ card.classList.remove('zone-locked'); card.querySelector('button').disabled=false; card.querySelector('button').classList.remove('cursor-not-allowed'); card.querySelector('h3').classList.remove('text-gray-400'); Array.from(card.querySelectorAll('p,span')).forEach(e=>e.classList.remove('text-gray-400')); }
+  }
+}
+
+function showResults(ok, title, msg, gained){
+  const m = document.getElementById('resultsModal');
+  document.getElementById('resultsIcon').textContent = ok?'🎉':'💡';
+  document.getElementById('resultsTitle').textContent = title;
+  document.getElementById('resultsMessage').textContent = msg;
+  document.getElementById('resultsScore').textContent = `+${gained} pts`;
+  m.classList.remove('hidden');
+}
+function closeResults(){
+  document.getElementById('resultsModal').classList.add('hidden');
+  returnToMenu();
+}
+
+// ===== ZONA 1 (Pares) =====
+function setupZone1(){
+  const items = shuffle(idiomsData.zone1);
+  const idiomsCol = document.getElementById('idiomsColumn');
+  const meanCol  = document.getElementById('meaningsColumn');
+  idiomsCol.innerHTML = '';
+  meanCol.innerHTML   = '';
+
+  items.forEach((it, idx)=>{
+    const el = document.createElement('div');
+    el.className = 'drag-item border-2 rounded-xl p-3 bg-white shadow-sm';
+    el.draggable = true;
+    el.id = `idiom_${idx}`;
+    el.dataset.key = it.idiom;
+    el.textContent = it.idiom;
+    el.addEventListener('dragstart', ev=>{
+      ev.dataTransfer.setData('text/plain', it.idiom);
+    });
+    idiomsCol.appendChild(el);
+  });
+
+  shuffle(items).forEach((it, idx)=>{
+    const dz = document.createElement('div');
+    dz.className = 'drop-zone border-2 rounded-xl p-3 bg-white min-h-[60px] flex items-center';
+    dz.dataset.accept = it.idiom;
+    dz.innerHTML = `<p class="text-sm text-gray-700">${it.meaning}</p>`;
+    dz.addEventListener('dragover', ev=>{ ev.preventDefault(); dz.classList.add('drag-over'); });
+    dz.addEventListener('dragleave', ()=> dz.classList.remove('drag-over'));
+    dz.addEventListener('drop', ev=>{
+      ev.preventDefault(); dz.classList.remove('drag-over');
+      const key = ev.dataTransfer.getData('text/plain');
+      const dragged = document.querySelector(`[data-key="${key}"]`);
+      if(key === dz.dataset.accept){
+        dz.classList.add('correct-match');
+        dz.appendChild(document.createElement('div')).textContent = dragged.textContent;
+        dragged.style.display = 'none';
+      } else {
+        dz.classList.add('wrong-match'); setTimeout(()=>dz.classList.remove('wrong-match'), 800);
+      }
+      updateMatchProgress();
+    });
+    meanCol.appendChild(dz);
+  });
+  updateMatchProgress();
+}
+
+function updateMatchProgress(){
+  const total = idiomsData.zone1.length;
+  const matched = Array.from(document.querySelectorAll('#meaningsColumn .drop-zone')).filter(z=>z.querySelector('.drag-item')||z.querySelector('div div')).length; // rough
+  const done = Array.from(document.querySelectorAll('#idiomsColumn .drag-item')).filter(el=>el.style.display==='none').length;
+  const count = done; // matched pairs
+  document.getElementById('matchProgress').textContent = `${count}/${total}`;
+  document.getElementById('matchProgressBar').style.width = `${(count/total)*100}%`;
+  if(count===total){
+    addScore(0, 100);
+    unlockNextZone(1);
+    showResults(true,'Zona 1 concluída!','Excelente! Você dominou as correspondências.',100);
+  }
+}
+
+function checkMatches(){ /* botão redundante para feedback manual */ updateMatchProgress(); }
+
+// ===== ZONA 2 (V/F) =====
+let tfIndex=0, tfLives=3;
+function setupZone2(){ tfIndex=0; tfLives=3; renderTF(); }
+function renderTF(){
+  const q = idiomsData.zone2[tfIndex];
+  document.getElementById('tfQuestionNum').textContent = tfIndex+1;
+  document.getElementById('tfIdiom').textContent = q.idiom;
+  document.getElementById('tfDefinition').textContent = q.meaning;
+  document.getElementById('tfProgressBar').style.width = `${((tfIndex+1)/idiomsData.zone2.length)*100}%`;
+  document.getElementById('livesCount').textContent = tfLives;
+}
+function answerTrueFalse(isTrue){
+  const q = idiomsData.zone2[tfIndex];
+  const correct = (isTrue === !!q.correct);
+  if(correct){ addScore(1,10); } else { tfLives--; }
+  tfIndex++;
+  if(tfLives<=0){ showResults(false,'Tente novamente','Você ficou sem vidas na Zona 2.',0); return; }
+  if(tfIndex>=idiomsData.zone2.length){ addScore(1,0); unlockNextZone(2); showResults(true,'Zona 2 concluída!','Boa! Vamos adiante.', Math.max(0, 10*idiomsData.zone2.length)); return; }
+  renderTF();
+}
+
+// ===== ZONA 3 (Lacunas) =====
+let fibIndex=0; 
+function setupZone3(){ fibIndex=0; renderFIB(); }
+function renderFIB(){
+  const q = idiomsData.zone3[fibIndex];
+  document.getElementById('fibQuestionNum').textContent = fibIndex+1;
+  document.getElementById('fibSentence').textContent = q.sentence;
+  const sel = document.getElementById('fibSelect'); sel.innerHTML = '<option value="">Escolha uma expressão…</option>';
+  q.options.forEach(opt=>{ const o=document.createElement('option'); o.value=opt; o.textContent=opt; sel.appendChild(o); });
+  document.getElementById('fibProgressBar').style.width = `${((fibIndex+1)/idiomsData.zone3.length)*100}%`;
+}
+function submitFillBlank(){
+  const q = idiomsData.zone3[fibIndex];
+  const val = document.getElementById('fibSelect').value.toLowerCase();
+  if(!val) return;
+  const ok = val === q.answer.toLowerCase();
+  if(ok) addScore(2, 15);
+  fibIndex++;
+  if(fibIndex>=idiomsData.zone3.length){ unlockNextZone(3); showResults(true,'Zona 3 concluída!','Ótimo trabalho preenchendo as lacunas.', 15*idiomsData.zone3.length); return; }
+  renderFIB();
+}
+
+// ===== ZONA 4 (Relâmpago) =====
+let lrIndex=0, lrTime=60, lrTimer=null;
+function setupZone4(){ lrIndex=0; lrTime=60; renderLR(); startLRTimer(); }
+function startLRTimer(){ clearInterval(lrTimer); lrTimer=setInterval(()=>{ lrTime--; document.getElementById('lrTimer').textContent = lrTime; if(lrTime<=0){ clearInterval(lrTimer); finishLR(); } },1000); }
+function renderLR(){
+  const q = idiomsData.zone4[lrIndex];
+  document.getElementById('lrQuestionNum').textContent = lrIndex+1;
+  document.getElementById('lrIdiom').textContent = q.idiom;
+  const wrap = document.getElementById('lrOptions'); wrap.innerHTML='';
+  shuffle(q.options).forEach(opt=>{
+    const b = document.createElement('button');
+    b.className='border rounded-xl p-3 hover:bg-yellow-100';
+    b.textContent = opt;
+    b.onclick = ()=>{ if(opt===q.options[0]) addScore(3,10); lrIndex++; if(lrIndex>=idiomsData.zone4.length){ finishLR(); } else { renderLR(); } };
+    wrap.appendChild(b);
+  });
+  document.getElementById('lrProgressBar').style.width = `${((lrIndex+1)/idiomsData.zone4.length)*100}%`;
+}
+function finishLR(){ clearInterval(lrTimer); unlockNextZone(4); showResults(true,'Zona 4 concluída!','Velocidade e precisão! Bora pro final.', 10*idiomsData.zone4.length); }
+
+// ===== ZONA 5 (Cenários) =====
+let scIndex=0;
+function setupZone5(){ scIndex=0; renderScenario(); }
+function renderScenario(){
+  const s = idiomsData.zone5[scIndex];
+  document.getElementById('scenarioNum').textContent = scIndex+1;
+  document.getElementById('scenarioTitle').textContent = s.title;
+  document.getElementById('scenarioDescription').textContent = s.description;
+  document.getElementById('scenarioQuestion').textContent = s.question;
+  const wrap = document.getElementById('scenarioOptions'); wrap.innerHTML='';
+  s.options.forEach(o=>{
+    const btn = document.createElement('button');
+    btn.className = 'w-full text-left border rounded-xl p-3 hover:bg-purple-100';
+    btn.textContent = o.text;
+    btn.onclick = ()=>{ if(o.correct) addScore(4,40); scIndex++; if(scIndex>=idiomsData.zone5.length){ showResults(true,'🏁 Parabéns!','Você concluiu todas as zonas!', 40*idiomsData.zone5.length); } else { document.getElementById('scenarioProgressBar').style.width = `${((scIndex+1)/idiomsData.zone5.length)*100}%`; renderScenario(); } };
+    wrap.appendChild(btn);
+  });
+}
+</script>
+</body>
+</html>

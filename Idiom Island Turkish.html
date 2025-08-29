@@ -1,0 +1,846 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Deyim Adası Macerası</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Fredoka+One:wght@400&family=Inter:wght@400;500;600;700&display=swap');
+    .game-font { font-family: 'Fredoka One', cursive; }
+    .body-font { font-family: 'Inter', sans-serif; }
+    .island-bg {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+    }
+    .zone-card { transition: all 0.3s ease; }
+    .zone-card:hover { transform: translateY(-5px); box-shadow: 0 20px 40px rgba(0,0,0,0.1); }
+    .zone-locked { opacity: 0.6; filter: grayscale(100%); }
+    .progress-bar { transition: width 0.5s ease; }
+    .drag-item { cursor: grab; transition: all 0.2s ease; }
+    .drag-item:hover { transform: scale(1.05); }
+    .drop-zone { min-height: 60px; transition: all 0.2s ease; }
+    .drop-zone.drag-over { background-color: #e0f2fe; border-color: #0284c7; }
+    .correct-match { background-color: #dcfce7 !important; border-color: #16a34a !important; }
+    .wrong-match   { background-color: #fef2f2 !important; border-color: #dc2626 !important; }
+
+    @keyframes bounce {
+      0%,20%,50%,80%,100% { transform: translateY(0); }
+      40% { transform: translateY(-10px); }
+      60% { transform: translateY(-5px); }
+    }
+    .timer-warning { animation: pulse 1s infinite; }
+    @keyframes pulse {
+      0% { opacity: 1; }
+      50% { opacity: 0.5; }
+      100% { opacity: 1; }
+    }
+  </style>
+</head>
+<body class="island-bg body-font">
+  <div id="app" class="min-h-screen">
+    <div id="mainMenu" class="container mx-auto px-4 py-8">
+      <div class="text-center mb-12">
+        <h1 class="game-font text-6xl text-white mb-4">🏝️ Deyim Adası Macerası</h1>
+        <p class="text-xl text-blue-100 mb-8">Eğlenceli meydan okumalarla 100 deyimde ustalaşın!</p>
+        <div class="bg-white/20 backdrop-blur-sm rounded-2xl p-6 max-w-md mx-auto mb-8">
+          <div class="flex justify-between items-center mb-4">
+            <span class="text-white font-semibold">Toplam Puan:</span>
+            <span id="totalScore" class="text-2xl font-bold text-yellow-300">0</span>
+          </div>
+          <div class="w-full bg-white/20 rounded-full h-3">
+            <div id="overallProgress" class="progress-bar bg-gradient-to-r from-yellow-400 to-orange-500 h-3 rounded-full" style="width: 0%"></div>
+          </div>
+          <p class="text-blue-100 text-sm mt-2">Ustalığa Giden Yol</p>
+        </div>
+      </div>
+
+      <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
+        <div class="zone-card bg-white rounded-2xl p-6 shadow-xl" data-zone="1">
+          <div class="text-center">
+            <div class="text-4xl mb-4">🏖️</div>
+            <h3 class="game-font text-2xl text-blue-600 mb-2">Eşleştirme Koyu</h3>
+            <p class="text-gray-600 mb-4">Deyimleri anlamlarıyla eşleştirin</p>
+            <div class="flex justify-between text-sm text-gray-500 mb-4">
+              <span>Maks: 100</span>
+              <span id="zone1Score">Puan: 0</span>
+            </div>
+            <button onclick="startZone(1)" class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-full font-semibold">
+              Başla
+            </button>
+          </div>
+        </div>
+        <div class="zone-card bg-white rounded-2xl p-6 shadow-xl zone-locked" data-zone="2">
+          <div class="text-center">
+            <div class="text-4xl mb-4">⛰️</div>
+            <h3 class="game-font text-2xl text-gray-400 mb-2">Doğru/Yanlış Uçurumu</h3>
+            <p class="text-gray-400 mb-4">Doğru veya Yanlış</p>
+            <div class="flex justify-between text-sm text-gray-400 mb-4">
+              <span>Maks: 100</span>
+              <span id="zone2Score">Puan: 0</span>
+            </div>
+            <button class="bg-gray-300 text-gray-500 px-6 py-2 rounded-full cursor-not-allowed">
+              🔒 Kilitli
+            </button>
+          </div>
+        </div>
+        <div class="zone-card bg-white rounded-2xl p-6 shadow-xl zone-locked" data-zone="3">
+          <div class="text-center">
+            <div class="text-4xl mb-4">💎</div>
+            <h3 class="game-font text-2xl text-gray-400 mb-2">Deyim Hazinesi</h3>
+            <p class="text-gray-400 mb-4">Boşlukları doldurun</p>
+            <div class="flex justify-between text-sm text-gray-400 mb-4">
+              <span>Maks: 150</span>
+              <span id="zone3Score">Puan: 0</span>
+            </div>
+            <button class="bg-gray-300 text-gray-500 px-6 py-2 rounded-full cursor-not-allowed">
+              🔒 Kilitli
+            </button>
+          </div>
+        </div>
+        <div class="zone-card bg-white rounded-2xl p-6 shadow-xl zone-locked" data-zone="4">
+          <div class="text-center">
+            <div class="text-4xl mb-4">⚡</div>
+            <h3 class="game-font text-2xl text-gray-400 mb-2">Şimşek Lagünü</h3>
+            <p class="text-gray-400 mb-4">Hızlı Test</p>
+            <div class="flex justify-between text-sm text-gray-400 mb-4">
+              <span>Maks: 100</span>
+              <span id="zone4Score">Puan: 0</span>
+            </div>
+            <button class="bg-gray-300 text-gray-500 px-6 py-2 rounded-full cursor-not-allowed">
+                🔒 Kilitli
+            </button>
+          </div>
+        </div>
+        <div class="zone-card bg-white rounded-2xl p-6 shadow-xl zone-locked" data-zone="5">
+          <div class="text-center">
+            <div class="text-4xl mb-4">🌀</div>
+            <h3 class="game-font text-2xl text-gray-400 mb-2">Senaryo Labirenti</h3>
+            <p class="text-gray-400 mb-4">İnteraktif senaryolar</p>
+            <div class="flex justify-between text-sm text-gray-400 mb-4">
+              <span>Maks: 150</span>
+              <span id="zone5Score">Puan: 0</span>
+            </div>
+            <button class="bg-gray-300 text-gray-500 px-6 py-2 rounded-full cursor-not-allowed">
+              🔒 Kilitli
+            </button>
+          </div>
+        </div>
+        <div class="zone-card bg-gradient-to-br from-yellow-400 to-orange-500 rounded-2xl p-6 shadow-xl">
+          <div class="text-center text-white">
+            <div class="text-4xl mb-4">🏆</div>
+            <h3 class="game-font text-2xl mb-2">Seviyeniz</h3>
+            <p id="playerRank" class="text-lg font-semibold mb-2">Pratik Yapmaya Devam Et</p>
+            <div class="text-sm opacity-90">
+              <div>🏆 500+ puan: Şampiyon</div>
+              <div>🧭 400+ puan: Kaşif</div>
+              <div>💡 0+ puan: Acemi</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="gameScreen" class="hidden container mx-auto px-4 py-8">
+      <div class="bg-white/20 backdrop-blur-sm rounded-2xl p-4 mb-6">
+        <div class="flex justify-between items-center">
+          <button onclick="returnToMenu()" class="bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-lg">
+            ← Adaya Geri Dön
+          </button>
+          <div class="text-center">
+            <h2 id="zoneTitle" class="game-font text-2xl text-white"></h2>
+            <p id="zoneDescription" class="text-blue-100"></p>
+          </div>
+          <div class="text-right">
+            <div class="text-white font-semibold">Puan: <span id="currentScore">0</span></div>
+            <div id="timerDisplay" class="text-yellow-300 font-bold hidden"></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="zone1Game" class="hidden">
+        <div class="bg-white rounded-2xl p-6 shadow-xl">
+          <div class="mb-6">
+            <div class="flex justify-between items-center mb-2">
+              <span class="font-semibold">İlerleme</span>
+              <span id="matchProgress">0/10</span>
+            </div>
+            <div class="w-full bg-gray-200 rounded-full h-3">
+              <div id="matchProgressBar" class="progress-bar bg-blue-500 h-3 rounded-full" style="width: 0%"></div>
+            </div>
+          </div>
+          <div class="grid md:grid-cols-2 gap-8">
+            <div>
+              <h3 class="font-bold text-lg mb-4 text-center">Deyimler</h3>
+              <div id="idiomsColumn" class="space-y-3"></div>
+            </div>
+            <div>
+              <h3 class="font-bold text-lg mb-4 text-center">Anlamlar</h3>
+              <div id="meaningsColumn" class="space-y-3"></div>
+            </div>
+          </div>
+          <div class="text-center mt-6">
+            <button id="checkMatches" onclick="checkMatches()" class="bg-green-500 hover:bg-green-600 text-white px-8 py-3 rounded-full font-semibold">
+              Cevapları Kontrol Et
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div id="zone2Game" class="hidden">
+        <div class="bg-white rounded-2xl p-6 shadow-xl max-w-2xl mx-auto">
+          <div class="mb-6">
+            <div class="flex justify-between items-center mb-2">
+              <span class="font-semibold">Soru <span id="tfQuestionNum">1</span>/10</span>
+              <span class="text-red-500 font-semibold">Can: <span id="livesCount">3</span></span>
+            </div>
+            <div class="w-full bg-gray-200 rounded-full h-3">
+              <div id="tfProgressBar" class="progress-bar bg-purple-500 h-3 rounded-full" style="width: 10%"></div>
+            </div>
+          </div>
+          <div class="text-center mb-8">
+            <div class="bg-blue-50 rounded-xl p-6 mb-6">
+              <h3 class="text-2xl font-bold text-blue-600 mb-4" id="tfIdiom"></h3>
+              <p class="text-lg text-gray-700" id="tfDefinition"></p>
+            </div>
+            <div class="space-x-4">
+              <button onclick="answerTrueFalse(true)" class="bg-green-500 hover:bg-green-600 text-white px-8 py-4 rounded-full font-bold text-xl">
+                ✓ DOĞRU
+              </button>
+              <button onclick="answerTrueFalse(false)" class="bg-red-500 hover:bg-red-600 text-white px-8 py-4 rounded-full font-bold text-xl">
+                ✗ YANLIŞ
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="zone3Game" class="hidden">
+        <div class="bg-white rounded-2xl p-6 shadow-xl max-w-2xl mx-auto">
+          <div class="mb-6">
+            <div class="flex justify-between items-center mb-2">
+              <span class="font-semibold">Soru <span id="fibQuestionNum">1</span>/5</span>
+              <span class="font-semibold">Bonus mevcut! 📝</span>
+            </div>
+            <div class="w-full bg-gray-200 rounded-full h-3">
+              <div id="fibProgressBar" class="progress-bar bg-green-500 h-3 rounded-full" style="width: 20%"></div>
+            </div>
+          </div>
+          <div class="text-center mb-8">
+            <div class="bg-green-50 rounded-xl p-6 mb-6">
+              <p class="text-lg text-gray-700 mb-4" id="fibSentence"></p>
+              <select id="fibSelect" class="border-2 border-green-300 rounded-lg px-4 py-2 text-lg font-semibold bg-white">
+                <option value="">Seçiniz...</option>
+              </select>
+            </div>
+            <button onclick="submitFillBlank()" class="bg-green-500 hover:bg-green-600 text-white px-8 py-3 rounded-full font-semibold mb-4">
+              Cevapla
+            </button>
+            <div class="border-t pt-4">
+              <p class="text-sm text-gray-600 mb-2">Bonus: Kendi cümleni kur!</p>
+              <textarea id="bonusSentence" placeholder="Cümleniz..." class="w-full border-2 border-gray-300 rounded-lg p-3 text-sm"></textarea>
+              <button onclick="submitBonus()" class="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-lg font-semibold mt-2">
+                Bonusu Gönder (+5)
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="zone4Game" class="hidden">
+        <div class="bg-white rounded-2xl p-6 shadow-xl max-w-2xl mx-auto">
+          <div class="mb-6">
+            <div class="flex justify-between items-center mb-2">
+              <span class="font-semibold">Soru <span id="lrQuestionNum">1</span>/5</span>
+              <span id="lrTimer" class="text-2xl font-bold text-red-500">60</span>
+            </div>
+            <div class="w-full bg-gray-200 rounded-full h-3">
+              <div id="lrProgressBar" class="progress-bar bg-yellow-500 h-3 rounded-full" style="width: 20%"></div>
+            </div>
+          </div>
+          <div class="text-center mb-8">
+            <div class="bg-yellow-50 rounded-xl p-6 mb-6">
+              <h3 class="text-2xl font-bold text-yellow-600 mb-4" id="lrIdiom"></h3>
+            </div>
+            <div class="grid grid-cols-2 gap-4" id="lrOptions"></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="zone5Game" class="hidden">
+        <div class="bg-white rounded-2xl p-6 shadow-xl max-w-3xl mx-auto">
+          <div class="mb-6">
+            <div class="flex justify-between items-center mb-2">
+              <span class="font-semibold">Senaryo <span id="scenarioNum">1</span>/2</span>
+              <span class="font-semibold">Son meydan okuma! 🌟</span>
+            </div>
+            <div class="w-full bg-gray-200 rounded-full h-3">
+              <div id="scenarioProgressBar" class="progress-bar bg-purple-500 h-3 rounded-full" style="width: 50%"></div>
+            </div>
+          </div>
+          <div class="mb-8">
+            <div class="bg-purple-50 rounded-xl p-6 mb-6">
+              <h3 class="text-xl font-bold text-purple-600 mb-4" id="scenarioTitle"></h3>
+              <p class="text-gray-700 mb-4" id="scenarioDescription"></p>
+              <p class="font-semibold text-gray-800" id="scenarioQuestion"></p>
+            </div>
+            <div class="space-y-3" id="scenarioOptions"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="resultsModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div class="bg-white rounded-2xl p-8 max-w-md mx-4 text-center">
+        <div id="resultsIcon" class="text-6xl mb-4"></div>
+        <h3 id="resultsTitle" class="game-font text-2xl mb-4"></h3>
+        <p id="resultsMessage" class="text-gray-600 mb-6"></p>
+        <div id="resultsScore" class="text-3xl font-bold text-blue-600 mb-6"></div>
+        <button onclick="closeResults()" class="bg-blue-500 hover:bg-blue-600 text-white px-8 py-3 rounded-full font-semibold">
+          Devam Et
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Core game state
+    const gameData = {
+      totalScore: 0,
+      zoneScores: [0,0,0,0,0],
+      unlockedZones: [true,false,false,false,false],
+      currentZone: 0,
+      currentQuestion: 0,
+      gameState: {}
+    };
+
+    // Turkish idioms data
+    const idiomsData = {
+      zone1: [
+        { idiom: "Abayı yakmak", meaning: "Aşık olmak" },
+        { idiom: "Ateş püskürmek", meaning: "Çok sinirlenmek" },
+        { idiom: "Baltayı taşa vurmak", meaning: "Pot kırmak, gaf yapmak" },
+        { idiom: "Can kulağı ile dinlemek", meaning: "Çok dikkatli dinlemek" },
+        { idiom: "Etekleri zil çalmak", meaning: "Çok sevinmek" },
+        { idiom: "Hapı yutmak", meaning: "Kötü duruma düşmek" },
+        { idiom: "İpe un sermek", meaning: "Bahane uydurmak" },
+        { idiom: "Pabucu dama atılmak", meaning: "Değerini, önemini yitirmek" },
+        { idiom: "Göz boyamak", meaning: "Kandırmak, aldatmak" },
+        { idiom: "Kafa patlatmak", meaning: "Bir konu üzerinde çok düşünmek" }
+      ],
+      zone2: [
+        { idiom: "Armut piş, ağzıma düş", meaning: "Hazıra konmak, emek harcamadan bir şey beklemek", correct: true },
+        { idiom: "Ağzı kulaklarına varmak", meaning: "Üzülmek, kederlenmek", correct: false },
+        { idiom: "Bindiği dalı kesmek", meaning: "Kendine zarar verecek bir iş yapmak", correct: true },
+        { idiom: "Çam devirmek", meaning: "Duruma uygun olmayan, kırıcı bir söz söylemek", correct: true },
+        { idiom: "Damarına basmak", meaning: "Birini övmek, mutlu etmek", correct: false },
+        { idiom: "İncir çekirdeğini doldurmaz", meaning: "Çok önemsiz bir neden", correct: true },
+        { idiom: "Pireyi deve yapmak", meaning: "Küçük bir sorunu çok abartmak", correct: true },
+        { idiom: "Gözden düşmek", meaning: "Daha çok sevilmek", correct: false },
+        { idiom: "Hava atmak", meaning: "Gösteriş yapmak, böbürlenmek", correct: true },
+        { idiom: "Eli kulağında", meaning: "Bir olayın gerçekleşmesi çok yakın", correct: true }
+      ],
+      zone3: [
+        {
+          sentence: "Sınavı kazandığını duyunca _______.",
+          answer: "Etekleri zil çalmak",
+          options: ["Etekleri zil çalmak", "Ateş püskürmek", "Hapı yutmak", "İpe un sermek"]
+        },
+        {
+          sentence: "Yaptığı hatadan sonra patronunun gözünde _______.",
+          answer: "Pabucu dama atılmak",
+          options: ["Pabucu dama atılmak", "Can kulağı ile dinlemek", "Göz boyamak", "Kafa patlatmak"]
+        },
+        {
+          sentence: "Boş bahanelerle işten kaçma, _______!",
+          answer: "İpe un sermek",
+          options: ["İpe un sermek", "Baltayı taşa vurmak", "Abayı yakmak", "Etekleri zil çalmak"]
+        },
+        {
+          sentence: "Bu zor problemi çözmek için bütün gece _______.",
+          answer: "Kafa patlatmak",
+          options: ["Kafa patlatmak", "Ateş püskürmek", "Göz boyamak", "Hapı yutmak"]
+        },
+        {
+          sentence: "Yalan söylediği ortaya çıkınca fena halde _______.",
+          answer: "Hapı yutmak",
+          options: ["Hapı yutmak", "Can kulağı ile dinlemek", "Pabucu dama atılmak", "İpe un sermek"]
+        }
+      ],
+      zone4: [
+        { idiom: "Ateş püskürmek", options: ["Çok sinirlenmek","Çok sevinmek","Çok üşümek","Çok gülmek"], answer: 0 },
+        { idiom: "Can kulağı ile dinlemek", options: ["İstemeden dinlemek","Gürültü yapmak","Çok dikkatli dinlemek","Uyuklamak"], answer: 2 },
+        { idiom: "Göz boyamak", options: ["Yardım etmek","Kandırmak, aldatmak","Resim yapmak","Mutlu etmek"], answer: 1 },
+        { idiom: "Baltayı taşa vurmak", options: ["Başarılı olmak","Odun kırmak","Doğruyu söylemek","Pot kırmak, gaf yapmak"], answer: 3 },
+        { idiom: "Abayı yakmak", options: ["Aşık olmak","Kıyafet giymek","Isınmak","Kızmak"], answer: 0 }
+      ],
+      zone5: [
+        {
+          title: "Önemsiz Sorun",
+          description: "Arkadaşın, çok küçük ve önemsiz bir sorunu sanki dünyanın sonuymuş gibi anlatıyor.",
+          question: "Onun için hangi deyimi kullanırsın?",
+          options: [
+            { text: "Pireyi deve yapıyor.", idiom: "Pireyi deve yapmak", correct: true },
+            { text: "Bindiği dalı kesiyor.", idiom: "Bindiği dalı kesmek", correct: false }
+          ]
+        },
+        {
+          title: "Sürekli Gösteriş",
+          description: "Bir tanıdığın sürekli yeni aldığı eşyalarla ve başarılarıyla övünüyor.",
+          question: "Onun bu davranışı için ne dersin?",
+          options: [
+            { text: "Sürekli hava atıyor.", idiom: "Hava atmak", correct: true },
+            { text: "Ağzı kulaklarına varıyor.", idiom: "Ağzı kulaklarına varmak", correct: false }
+          ]
+        }
+      ]
+    };
+
+    // INITIALIZE
+    function initGame() {
+      updateDisplay();
+    }
+
+    function updateDisplay() {
+      document.getElementById('totalScore').textContent = gameData.totalScore;
+      document.getElementById('overallProgress').style.width = `${Math.min(gameData.totalScore/600*100,100)}%`;
+      for (let i = 0; i < 5; i++) {
+        document.getElementById(`zone${i+1}Score`).textContent = `Puan: ${gameData.zoneScores[i]}`;
+        const card = document.querySelector(`[data-zone="${i+1}"]`);
+        const btn = card.querySelector('button');
+        const elements = card.querySelectorAll('h3, p, span');
+
+        if (gameData.unlockedZones[i]) {
+          card.classList.remove('zone-locked');
+          elements.forEach(el => {
+              el.classList.remove('text-gray-400');
+              if (el.tagName === 'H3') el.classList.add('text-blue-600');
+              else el.classList.add('text-gray-600', 'text-gray-500');
+          });
+          btn.textContent = gameData.zoneScores[i] > 0 ? 'Tekrar Oyna' : 'Başla';
+          btn.classList.remove('cursor-not-allowed', 'bg-gray-300', 'text-gray-500');
+          btn.classList.add('bg-blue-500', 'hover:bg-blue-600', 'text-white');
+          btn.disabled = false;
+          btn.setAttribute('onclick', `startZone(${i+1})`);
+        } else {
+            card.classList.add('zone-locked');
+            elements.forEach(el => {
+                el.classList.add('text-gray-400');
+                el.classList.remove('text-blue-600', 'text-gray-600', 'text-gray-500');
+            });
+            btn.textContent = '🔒 Kilitli';
+            btn.classList.add('cursor-not-allowed', 'bg-gray-300', 'text-gray-500');
+            btn.classList.remove('bg-blue-500', 'hover:bg-blue-600', 'text-white');
+            btn.disabled = true;
+            btn.removeAttribute('onclick');
+        }
+      }
+      updatePlayerRank();
+    }
+
+    function updatePlayerRank() {
+      const rankEl = document.getElementById('playerRank');
+      if (gameData.totalScore >= 500) {
+        rankEl.textContent = 'Şampiyon 🏆';
+      } else if (gameData.totalScore >= 400) {
+        rankEl.textContent = 'Kaşif 🧭';
+      } else {
+        rankEl.textContent = 'Acemi 💡';
+      }
+    }
+
+    // START ZONE
+    function startZone(zoneNum) {
+      gameData.currentZone = zoneNum;
+      gameData.currentQuestion = 0;
+      document.getElementById('mainMenu').classList.add('hidden');
+      document.getElementById('gameScreen').classList.remove('hidden');
+      for (let i = 1; i <= 5; i++) {
+        document.getElementById(`zone${i}Game`).classList.add('hidden');
+      }
+      document.getElementById(`zone${zoneNum}Game`).classList.remove('hidden');
+
+      const zoneInfo = {
+        1: { title: '🏖️ Eşleştirme Koyu', desc: 'Deyimleri anlamlarıyla eşleştirin' },
+        2: { title: '⛰️ Doğru/Yanlış Uçurumu', desc: 'Doğru veya Yanlış' },
+        3: { title: '💎 Deyim Hazinesi', desc: 'Cümlelerdeki boşlukları doldurun' },
+        4: { title: '⚡ Şimşek Lagünü', desc: 'Zamana karşı hızlı test' },
+        5: { title: '🌀 Senaryo Labirenti', desc: 'İnteraktif senaryolar' }
+      };
+      document.getElementById('zoneTitle').textContent = zoneInfo[zoneNum].title;
+      document.getElementById('zoneDescription').textContent = zoneInfo[zoneNum].desc;
+      document.getElementById('currentScore').textContent = '0';
+
+      if (zoneNum === 1) initZone1();
+      if (zoneNum === 2) initZone2();
+      if (zoneNum === 3) initZone3();
+      if (zoneNum === 4) initZone4();
+      if (zoneNum === 5) initZone5();
+    }
+
+    // ZONE 1
+    function initZone1() {
+      const idioms = [...idiomsData.zone1];
+      const meanings = idioms.map(i => i.meaning).sort(() => Math.random() - 0.5);
+      gameData.gameState = { idioms, meanings, matches: {} };
+      document.getElementById('matchProgress').textContent = `0/${idioms.length}`;
+      document.getElementById('matchProgressBar').style.width = '0%';
+      renderMatchingGame();
+    }
+
+    function renderMatchingGame() {
+      const idiomsCol = document.getElementById('idiomsColumn');
+      const meaningsCol = document.getElementById('meaningsColumn');
+      idiomsCol.innerHTML = '';
+      meaningsCol.innerHTML = '';
+
+      gameData.gameState.idioms.forEach(item => {
+        const d = document.createElement('div');
+        d.className = 'drag-item bg-blue-100 border-2 border-blue-300 rounded-lg p-3 text-center';
+        d.draggable = true;
+        d.textContent = item.idiom;
+        d.dataset.idiom = item.idiom;
+        d.addEventListener('dragstart', e => {
+          e.dataTransfer.setData('text/plain', item.idiom);
+        });
+        idiomsCol.appendChild(d);
+      });
+
+      gameData.gameState.meanings.forEach(m => {
+        const d = document.createElement('div');
+        d.className = 'drop-zone bg-gray-50 border-2 border-gray-300 rounded-lg p-3 flex items-center justify-center';
+        d.dataset.meaning = m;
+        d.textContent = m;
+        d.addEventListener('dragover', e => { e.preventDefault(); d.classList.add('drag-over'); });
+        d.addEventListener('dragleave', () => d.classList.remove('drag-over'));
+        d.addEventListener('drop', e => {
+          e.preventDefault();
+          d.classList.remove('drag-over');
+          const idi = e.dataTransfer.getData('text/plain');
+          if (!idi) return;
+          const oldIdiom = Object.keys(gameData.gameState.matches).find(key => gameData.gameState.matches[key] === m);
+          if (oldIdiom) {
+              delete gameData.gameState.matches[oldIdiom];
+              document.querySelector(`[data-idiom="${oldIdiom}"]`).style.opacity = '1';
+          }
+          gameData.gameState.matches[idi] = m;
+          d.innerHTML = `<div class="font-semibold text-blue-800">${idi}</div>`;
+          d.classList.add('bg-blue-50', 'border-blue-400');
+          document.querySelector(`[data-idiom="${idi}"]`).style.opacity = '0.3';
+          updateMatchProgress();
+        });
+        meaningsCol.appendChild(d);
+      });
+    }
+
+    function updateMatchProgress() {
+      const count = Object.keys(gameData.gameState.matches).length;
+      const total = gameData.gameState.idioms.length;
+      document.getElementById('matchProgress').textContent = `${count}/${total}`;
+      document.getElementById('matchProgressBar').style.width = `${(count / total) * 100}%`;
+    }
+
+    function checkMatches() {
+      let correctCount = 0;
+      gameData.gameState.idioms.forEach(item => {
+          const matchedMeaning = gameData.gameState.matches[item.idiom];
+          const isCorrect = matchedMeaning === item.meaning;
+          if (isCorrect) correctCount++;
+          
+          const dropZoneEl = document.querySelector(`[data-meaning="${matchedMeaning}"]`);
+          if (dropZoneEl) {
+              dropZoneEl.classList.add(isCorrect ? 'correct-match' : 'wrong-match');
+          }
+      });
+      const score = correctCount * 10;
+      gameData.zoneScores[0] = score;
+      gameData.totalScore += score;
+      if (correctCount >= 8) gameData.unlockedZones[1] = true;
+      showResults(1, score, correctCount, gameData.gameState.idioms.length);
+    }
+
+    // ZONE 2
+    function initZone2() {
+      gameData.gameState = {
+        questions: [...idiomsData.zone2].sort(() => Math.random() - 0.5),
+        currentQ: 0,
+        score: 0,
+        lives: 3,
+        correctAnswers: 0
+      };
+      showTrueFalseQuestion();
+    }
+
+    function showTrueFalseQuestion() {
+      const s = gameData.gameState;
+      const q = s.questions[s.currentQ];
+      document.getElementById('tfQuestionNum').textContent = s.currentQ + 1;
+      document.getElementById('livesCount').textContent = '❤️'.repeat(s.lives);
+      document.getElementById('tfIdiom').textContent = q.idiom;
+      document.getElementById('tfDefinition').textContent = `Anlamı: "${q.meaning}"`;
+      document.getElementById('tfProgressBar').style.width = `${((s.currentQ + 1) / s.questions.length) * 100}%`;
+    }
+
+    function answerTrueFalse(userAns) {
+      const s = gameData.gameState;
+      if (s.currentQ >= s.questions.length) return;
+      const q = s.questions[s.currentQ];
+      if (userAns === q.correct) {
+        s.score += 10;
+        s.correctAnswers++;
+      } else {
+        s.lives--;
+      }
+      document.getElementById('currentScore').textContent = s.score;
+      s.currentQ++;
+      
+      if (s.lives <= 0) {
+        gameData.zoneScores[1] = s.score;
+        gameData.totalScore += s.score;
+        showResults(2, s.score, s.correctAnswers, s.questions.length, true); // Game over
+        return;
+      }
+
+      if (s.currentQ >= s.questions.length) {
+        gameData.zoneScores[1] = s.score;
+        gameData.totalScore += s.score;
+        if(s.correctAnswers >= 8) gameData.unlockedZones[2] = true;
+        showResults(2, s.score, s.correctAnswers, s.questions.length);
+      } else {
+        showTrueFalseQuestion();
+      }
+    }
+
+    // ZONE 3
+    function initZone3() {
+      gameData.gameState = {
+        questions: [...idiomsData.zone3].sort(() => Math.random() - 0.5),
+        currentQ: 0,
+        score: 0,
+        correctAnswers: 0
+      };
+      showFillBlankQuestion();
+    }
+
+    function showFillBlankQuestion() {
+      const s = gameData.gameState;
+      const q = s.questions[s.currentQ];
+      document.getElementById('fibQuestionNum').textContent = s.currentQ + 1;
+      document.getElementById('fibSentence').textContent = q.sentence;
+      document.getElementById('fibProgressBar').style.width = `${((s.currentQ + 1) / s.questions.length) * 100}%`;
+      const sel = document.getElementById('fibSelect');
+      sel.innerHTML = `<option value="">Seçiniz...</option>`;
+      q.options.sort(() => Math.random() - 0.5).forEach(o => {
+        const opt = document.createElement('option');
+        opt.value = o;
+        opt.textContent = o;
+        sel.appendChild(opt);
+      });
+      document.getElementById('bonusSentence').value = '';
+      document.getElementById('bonusSentence').disabled = false;
+    }
+
+    function submitFillBlank() {
+      const s = gameData.gameState;
+      if (s.currentQ >= s.questions.length) return;
+      const q = s.questions[s.currentQ];
+      const ans = document.getElementById('fibSelect').value;
+      if (!ans) {
+        alert('Lütfen bir deyim seçin!');
+        return;
+      }
+      if (ans === q.answer) {
+        s.score += 15;
+        s.correctAnswers++;
+      }
+      document.getElementById('currentScore').textContent = s.score;
+      s.currentQ++;
+      if (s.currentQ >= s.questions.length) {
+        gameData.zoneScores[2] = s.score;
+        gameData.totalScore += s.score;
+        if(s.correctAnswers >= 4) gameData.unlockedZones[3] = true;
+        showResults(3, s.score, s.correctAnswers, s.questions.length);
+      } else {
+        showFillBlankQuestion();
+      }
+    }
+
+    function submitBonus() {
+      const txt = document.getElementById('bonusSentence').value.trim();
+      if (txt.length > 10) {
+        gameData.gameState.score += 5;
+        document.getElementById('currentScore').textContent = gameData.gameState.score;
+        alert('+5 bonus puan!');
+        document.getElementById('bonusSentence').value = '';
+        document.getElementById('bonusSentence').disabled = true;
+      } else {
+        alert('Bonus kazanmak için daha uzun bir cümle yazın!');
+      }
+    }
+
+    // ZONE 4
+    function initZone4() {
+        gameData.gameState = {
+            questions: [...idiomsData.zone4].sort(() => Math.random() - 0.5),
+            currentQ: 0,
+            score: 0,
+            timeLeft: 60,
+            correctAnswers: 0,
+            timer: null
+        };
+        document.getElementById('timerDisplay').classList.remove('hidden');
+        document.getElementById('lrTimer').classList.remove('timer-warning');
+        document.getElementById('lrTimer').textContent = gameData.gameState.timeLeft;
+        gameData.gameState.timer = setInterval(() => {
+            gameData.gameState.timeLeft--;
+            document.getElementById('lrTimer').textContent = gameData.gameState.timeLeft;
+            if (gameData.gameState.timeLeft <= 10) {
+                document.getElementById('lrTimer').classList.add('timer-warning');
+            }
+            if (gameData.gameState.timeLeft <= 0) {
+                finishLightningRound();
+            }
+        }, 1000);
+        showLightningQuestion();
+    }
+
+    function showLightningQuestion() {
+        const s = gameData.gameState;
+        const q = s.questions[s.currentQ];
+        document.getElementById('lrQuestionNum').textContent = s.currentQ + 1;
+        document.getElementById('lrIdiom').textContent = q.idiom;
+        document.getElementById('lrProgressBar').style.width = `${((s.currentQ + 1) / s.questions.length) * 100}%`;
+        const optionsContainer = document.getElementById('lrOptions');
+        optionsContainer.innerHTML = '';
+        q.options.forEach((opt, index) => {
+            const btn = document.createElement('button');
+            btn.className = 'bg-yellow-100 hover:bg-yellow-200 border-2 border-yellow-300 rounded-lg p-4 font-semibold';
+            btn.textContent = opt;
+            btn.onclick = () => answerLightning(index);
+            optionsContainer.appendChild(btn);
+        });
+    }
+
+    function answerLightning(selectedIndex) {
+        const s = gameData.gameState;
+        if (s.currentQ >= s.questions.length) return;
+        const q = s.questions[s.currentQ];
+        if (selectedIndex === q.answer) {
+            s.score += 10 + Math.floor(s.timeLeft / 10);
+            s.correctAnswers++;
+        }
+        document.getElementById('currentScore').textContent = s.score;
+        s.currentQ++;
+        if (s.currentQ >= s.questions.length) {
+            finishLightningRound();
+        } else {
+            showLightningQuestion();
+        }
+    }
+
+    function finishLightningRound() {
+        const s = gameData.gameState;
+        clearInterval(s.timer);
+        document.getElementById('timerDisplay').classList.add('hidden');
+        gameData.zoneScores[3] = s.score;
+        gameData.totalScore += s.score;
+        if (s.correctAnswers >= 4) gameData.unlockedZones[4] = true;
+        showResults(4, s.score, s.correctAnswers, s.questions.length);
+    }
+
+    // ZONE 5
+    function initZone5() {
+        gameData.gameState = {
+            scenarios: [...idiomsData.zone5].sort(() => Math.random() - 0.5),
+            currentS: 0,
+            score: 0,
+            correctAnswers: 0
+        };
+        showScenario();
+    }
+
+    function showScenario() {
+        const s = gameData.gameState;
+        const scenario = s.scenarios[s.currentS];
+        document.getElementById('scenarioNum').textContent = s.currentS + 1;
+        document.getElementById('scenarioTitle').textContent = scenario.title;
+        document.getElementById('scenarioDescription').textContent = scenario.description;
+        document.getElementById('scenarioQuestion').textContent = scenario.question;
+        document.getElementById('scenarioProgressBar').style.width = `${((s.currentS + 1) / s.scenarios.length) * 100}%`;
+        const optionsContainer = document.getElementById('scenarioOptions');
+        optionsContainer.innerHTML = '';
+        scenario.options.forEach((opt, index) => {
+            const btn = document.createElement('button');
+            btn.className = 'bg-purple-100 hover:bg-purple-200 border-2 border-purple-300 rounded-lg p-4 text-left w-full';
+            btn.innerHTML = `<div class="font-semibold">${opt.text}</div><div class="text-sm text-gray-600 mt-1">Kullanılan: "${opt.idiom}"</div>`;
+            btn.onclick = () => answerScenario(index);
+            optionsContainer.appendChild(btn);
+        });
+    }
+
+    function answerScenario(selectedIndex) {
+        const s = gameData.gameState;
+        if (s.currentS >= s.scenarios.length) return;
+        const scenario = s.scenarios[s.currentS];
+        if (scenario.options[selectedIndex].correct) {
+            s.score += 25;
+            s.correctAnswers++;
+        }
+        document.getElementById('currentScore').textContent = s.score;
+        s.currentS++;
+        if (s.currentS >= s.scenarios.length) {
+            gameData.zoneScores[4] = s.score;
+            gameData.totalScore += s.score;
+            showResults(5, s.score, s.correctAnswers, s.scenarios.length);
+        } else {
+            showScenario();
+        }
+    }
+
+    // RESULTS & NAVIGATION
+    function showResults(zone, score, correct, total, gameOver = false) {
+      const modal = document.getElementById('resultsModal');
+      const icon = document.getElementById('resultsIcon');
+      const title = document.getElementById('resultsTitle');
+      const message = document.getElementById('resultsMessage');
+      const scoreDisplay = document.getElementById('resultsScore');
+      const percentage = total > 0 ? Math.round((correct / total) * 100) : 0;
+      
+      if (gameOver) {
+          icon.textContent = '💔';
+          title.textContent = 'Oyun Bitti!';
+          message.textContent = `Canların bitti. Pratik yap ve tekrar dene!`;
+      } else if (percentage >= 80) {
+        icon.textContent = '🎉';
+        title.textContent = 'Harika İş!';
+        message.textContent = `Bu bölümü %${percentage} başarıyla tamamladın!`;
+      } else if (percentage >= 50) {
+        icon.textContent = '👍';
+        title.textContent = 'İyi İş!';
+        message.textContent = `%${percentage} doğru yaptın. Pratiğe devam!`;
+      } else {
+        icon.textContent = '💪';
+        title.textContent = 'Denemeye Devam Et!';
+        message.textContent = `%${percentage} doğru yaptın. Pratik mükemmelleştirir!`;
+      }
+      
+      scoreDisplay.textContent = `+${score} puan`;
+      modal.classList.remove('hidden');
+    }
+
+    function closeResults() {
+      document.getElementById('resultsModal').classList.add('hidden');
+      returnToMenu();
+    }
+
+    function returnToMenu() {
+      document.getElementById('gameScreen').classList.add('hidden');
+      document.getElementById('mainMenu').classList.remove('hidden');
+      updateDisplay();
+    }
+    
+    // Initialize the game when page loads
+    document.addEventListener('DOMContentLoaded', initGame);
+  </script>
+</body>
+</html>
