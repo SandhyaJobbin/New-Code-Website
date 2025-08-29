@@ -1,0 +1,1114 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Приключения на Острове Идиом</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fredoka+One:wght@400&family=Inter:wght@400;500;600;700&display=swap');
+        
+        .game-font { font-family: 'Fredoka One', cursive; }
+        .body-font { font-family: 'Inter', sans-serif; }
+        
+        .island-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .zone-card {
+            transition: all 0.3s ease;
+            transform: translateY(0);
+        }
+        
+        .zone-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+        
+        .zone-locked {
+            opacity: 0.6;
+            filter: grayscale(100%);
+        }
+        
+        .progress-bar {
+            transition: width 0.5s ease;
+        }
+        
+        .drag-item {
+            cursor: grab;
+            transition: all 0.2s ease;
+        }
+        
+        .drag-item:hover {
+            transform: scale(1.05);
+        }
+        
+        .drop-zone {
+            min-height: 60px;
+            transition: all 0.2s ease;
+        }
+        
+        .drop-zone.drag-over {
+            background-color: #e0f2fe;
+            border-color: #0284c7;
+        }
+        
+        .correct-match {
+            background-color: #dcfce7 !important;
+            border-color: #16a34a !important;
+        }
+        
+        .wrong-match {
+            background-color: #fef2f2 !important;
+            border-color: #dc2626 !important;
+        }
+        
+        @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+            40% { transform: translateY(-10px); }
+            60% { transform: translateY(-5px); }
+        }
+        
+        .bounce-animation {
+            animation: bounce 0.6s;
+        }
+        
+        .timer-warning {
+            animation: pulse 1s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+    </style>
+</head>
+<body class="island-bg body-font">
+    <div id="app" class="min-h-screen">
+        <!-- Main Menu -->
+        <div id="mainMenu" class="container mx-auto px-4 py-8">
+            <div class="text-center mb-12">
+                <h1 class="game-font text-6xl text-white mb-4">🏝️ Приключения на Острове Идиом</h1>
+                <p class="text-xl text-blue-100 mb-8">Освойте 100 русских идиом через увлекательные островные вызовы!</p>
+                
+                <!-- Player Stats -->
+                <div class="bg-white/20 backdrop-blur-sm rounded-2xl p-6 max-w-md mx-auto mb-8">
+                    <div class="flex justify-between items-center mb-4">
+                        <span class="text-white font-semibold">Общий счёт:</span>
+                        <span id="totalScore" class="text-2xl font-bold text-yellow-300">0</span>
+                    </div>
+                    <div class="w-full bg-white/20 rounded-full h-3">
+                        <div id="overallProgress" class="progress-bar bg-gradient-to-r from-yellow-400 to-orange-500 h-3 rounded-full" style="width: 0%"></div>
+                    </div>
+                    <p class="text-blue-100 text-sm mt-2">Прогресс до Мастера Идиом</p>
+                </div>
+            </div>
+            
+            <!-- Zone Selection -->
+            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
+                <!-- Zone 1: Match-Up Bay -->
+                <div class="zone-card bg-white rounded-2xl p-6 shadow-xl" data-zone="1">
+                    <div class="text-center">
+                        <div class="text-4xl mb-4">🏖️</div>
+                        <h3 class="game-font text-2xl text-blue-600 mb-2">Бухта Сопоставлений</h3>
+                        <p class="text-gray-600 mb-4">Сопоставьте идиомы с их значениями</p>
+                        <div class="flex justify-between text-sm text-gray-500 mb-4">
+                            <span>Макс: 100 очков</span>
+                            <span id="zone1Score">Лучший результат: 0</span>
+                        </div>
+                        <button onclick="startZone(1)" class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-full font-semibold transition-colors">
+                            Начать приключение
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Zone 2: Bluff Cliffs -->
+                <div class="zone-card bg-white rounded-2xl p-6 shadow-xl zone-locked" data-zone="2">
+                    <div class="text-center">
+                        <div class="text-4xl mb-4">⛰️</div>
+                        <h3 class="game-font text-2xl text-gray-400 mb-2">Скалы Обмана</h3>
+                        <p class="text-gray-400 mb-4">Вызовы Правда или Ложь</p>
+                        <div class="flex justify-between text-sm text-gray-400 mb-4">
+                            <span>Макс: 100 очков</span>
+                            <span id="zone2Score">Лучший результат: 0</span>
+                        </div>
+                        <button class="bg-gray-300 text-gray-500 px-6 py-2 rounded-full font-semibold cursor-not-allowed">
+                            🔒 Заблокировано
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Zone 3: Treasure Trove -->
+                <div class="zone-card bg-white rounded-2xl p-6 shadow-xl zone-locked" data-zone="3">
+                    <div class="text-center">
+                        <div class="text-4xl mb-4">💎</div>
+                        <h3 class="game-font text-2xl text-gray-400 mb-2">Сокровищница</h3>
+                        <p class="text-gray-400 mb-4">Заполните пропуски</p>
+                        <div class="flex justify-between text-sm text-gray-400 mb-4">
+                            <span>Макс: 150 очков</span>
+                            <span id="zone3Score">Лучший результат: 0</span>
+                        </div>
+                        <button class="bg-gray-300 text-gray-500 px-6 py-2 rounded-full font-semibold cursor-not-allowed">
+                            🔒 Заблокировано
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Zone 4: Lightning Lagoon -->
+                <div class="zone-card bg-white rounded-2xl p-6 shadow-xl zone-locked" data-zone="4">
+                    <div class="text-center">
+                        <div class="text-4xl mb-4">⚡</div>
+                        <h3 class="game-font text-2xl text-gray-400 mb-2">Молниеносная Лагуна</h3>
+                        <p class="text-gray-400 mb-4">Скоростная викторина</p>
+                        <div class="flex justify-between text-sm text-gray-400 mb-4">
+                            <span>Макс: 100 очков</span>
+                            <span id="zone4Score">Лучший результат: 0</span>
+                        </div>
+                        <button class="bg-gray-300 text-gray-500 px-6 py-2 rounded-full font-semibold cursor-not-allowed">
+                            🔒 Заблокировано
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Zone 5: Idiom Maze -->
+                <div class="zone-card bg-white rounded-2xl p-6 shadow-xl zone-locked" data-zone="5">
+                    <div class="text-center">
+                        <div class="text-4xl mb-4">🌀</div>
+                        <h3 class="game-font text-2xl text-gray-400 mb-2">Лабиринт Идиом</h3>
+                        <p class="text-gray-400 mb-4">Сценарные вызовы</p>
+                        <div class="flex justify-between text-sm text-gray-400 mb-4">
+                            <span>Макс: 150 очков</span>
+                            <span id="zone5Score">Лучший результат: 0</span>
+                        </div>
+                        <button class="bg-gray-300 text-gray-500 px-6 py-2 rounded-full font-semibold cursor-not-allowed">
+                            🔒 Заблокировано
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Achievement Badge -->
+                <div class="zone-card bg-gradient-to-br from-yellow-400 to-orange-500 rounded-2xl p-6 shadow-xl">
+                    <div class="text-center text-white">
+                        <div class="text-4xl mb-4">🏆</div>
+                        <h3 class="game-font text-2xl mb-2">Ваш ранг</h3>
+                        <p id="playerRank" class="text-lg font-semibold mb-2">Продолжайте практиковаться</p>
+                        <div class="text-sm opacity-90">
+                            <div>🏆 500+ очков: Чемпион</div>
+                            <div>🧭 400+ очков: Исследователь</div>
+                            <div>💡 0+ очков: Практикующийся</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Game Screens -->
+        <div id="gameScreen" class="hidden container mx-auto px-4 py-8">
+            <!-- Game Header -->
+            <div class="bg-white/20 backdrop-blur-sm rounded-2xl p-4 mb-6">
+                <div class="flex justify-between items-center">
+                    <button onclick="returnToMenu()" class="bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-lg transition-colors">
+                        ← Вернуться на остров
+                    </button>
+                    <div class="text-center">
+                        <h2 id="zoneTitle" class="game-font text-2xl text-white"></h2>
+                        <p id="zoneDescription" class="text-blue-100"></p>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-white font-semibold">Текущий счёт: <span id="currentScore">0</span></div>
+                        <div class="text-yellow-300 font-semibold">Лучший: <span id="bestScore">0</span></div>
+                        <div id="timerDisplay" class="text-yellow-300 font-bold hidden"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Zone 1: Match-Up Bay -->
+            <div id="zone1Game" class="hidden">
+                <div class="bg-white rounded-2xl p-6 shadow-xl">
+                    <div class="mb-6">
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="font-semibold">Прогресс</span>
+                            <span id="matchProgress">0/10</span>
+                        </div>
+                        <div class="w-full bg-gray-200 rounded-full h-3">
+                            <div id="matchProgressBar" class="progress-bar bg-blue-500 h-3 rounded-full" style="width: 0%"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="grid md:grid-cols-2 gap-8">
+                        <div>
+                            <h3 class="font-bold text-lg mb-4 text-center">Идиомы</h3>
+                            <div id="idiomsColumn" class="space-y-3"></div>
+                        </div>
+                        <div>
+                            <h3 class="font-bold text-lg mb-4 text-center">Значения</h3>
+                            <div id="meaningsColumn" class="space-y-3"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="text-center mt-6">
+                        <button id="checkMatches" onclick="checkMatches()" class="bg-green-500 hover:bg-green-600 text-white px-8 py-3 rounded-full font-semibold transition-colors">
+                            Проверить ответы
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Zone 2: True/False -->
+            <div id="zone2Game" class="hidden">
+                <div class="bg-white rounded-2xl p-6 shadow-xl max-w-2xl mx-auto">
+                    <div class="mb-6">
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="font-semibold">Вопрос <span id="tfQuestionNum">1</span>/10</span>
+                            <span class="text-red-500 font-semibold">Жизни: <span id="livesCount">3</span> ❤️</span>
+                        </div>
+                        <div class="w-full bg-gray-200 rounded-full h-3">
+                            <div id="tfProgressBar" class="progress-bar bg-purple-500 h-3 rounded-full" style="width: 10%"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="text-center mb-8">
+                        <div class="bg-blue-50 rounded-xl p-6 mb-6">
+                            <h3 class="text-2xl font-bold text-blue-600 mb-4" id="tfIdiom"></h3>
+                            <p class="text-lg text-gray-700" id="tfDefinition"></p>
+                        </div>
+                        
+                        <div class="space-x-4">
+                            <button onclick="answerTrueFalse(true)" class="bg-green-500 hover:bg-green-600 text-white px-8 py-4 rounded-full font-bold text-xl transition-colors">
+                                ✓ ВЕРНО
+                            </button>
+                            <button onclick="answerTrueFalse(false)" class="bg-red-500 hover:bg-red-600 text-white px-8 py-4 rounded-full font-bold text-xl transition-colors">
+                                ✗ НЕВЕРНО
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Zone 3: Fill in the Blank -->
+            <div id="zone3Game" class="hidden">
+                <div class="bg-white rounded-2xl p-6 shadow-xl max-w-2xl mx-auto">
+                    <div class="mb-6">
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="font-semibold">Вопрос <span id="fibQuestionNum">1</span>/10</span>
+                            <span class="font-semibold">Бонус доступен! 📝</span>
+                        </div>
+                        <div class="w-full bg-gray-200 rounded-full h-3">
+                            <div id="fibProgressBar" class="progress-bar bg-green-500 h-3 rounded-full" style="width: 10%"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="text-center mb-8">
+                        <div class="bg-green-50 rounded-xl p-6 mb-6">
+                            <p class="text-lg text-gray-700 mb-4" id="fibSentence"></p>
+                            <select id="fibSelect" class="border-2 border-green-300 rounded-lg px-4 py-2 text-lg font-semibold bg-white">
+                                <option value="">Выберите идиому...</option>
+                            </select>
+                        </div>
+                        
+                        <button onclick="submitFillBlank()" class="bg-green-500 hover:bg-green-600 text-white px-8 py-3 rounded-full font-semibold transition-colors mb-4">
+                            Отправить ответ
+                        </button>
+                        
+                        <div class="border-t pt-4">
+                            <p class="text-sm text-gray-600 mb-2">Бонус: Создайте своё предложение с этой идиомой!</p>
+                            <textarea id="bonusSentence" placeholder="Напишите своё предложение, используя идиому..." class="w-full border-2 border-gray-300 rounded-lg p-3 text-sm"></textarea>
+                            <button onclick="submitBonus()" class="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-lg font-semibold mt-2 transition-colors">
+                                Отправить за бонус (+5 очков)
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Zone 4: Lightning Round -->
+            <div id="zone4Game" class="hidden">
+                <div class="bg-white rounded-2xl p-6 shadow-xl max-w-2xl mx-auto">
+                    <div class="mb-6">
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="font-semibold">Вопрос <span id="lrQuestionNum">1</span>/20</span>
+                            <span id="lrTimer" class="text-2xl font-bold text-red-500">60</span>
+                        </div>
+                        <div class="w-full bg-gray-200 rounded-full h-3">
+                            <div id="lrProgressBar" class="progress-bar bg-yellow-500 h-3 rounded-full" style="width: 5%"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="text-center mb-8">
+                        <div class="bg-yellow-50 rounded-xl p-6 mb-6">
+                            <h3 class="text-2xl font-bold text-yellow-600 mb-4" id="lrIdiom"></h3>
+                        </div>
+                        
+                        <div class="grid grid-cols-2 gap-4" id="lrOptions">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Zone 5: Scenario Game -->
+            <div id="zone5Game" class="hidden">
+                <div class="bg-white rounded-2xl p-6 shadow-xl max-w-3xl mx-auto">
+                    <div class="mb-6">
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="font-semibold">Сценарий <span id="scenarioNum">1</span>/8</span>
+                            <span class="font-semibold">Финальный вызов! 🌟</span>
+                        </div>
+                        <div class="w-full bg-gray-200 rounded-full h-3">
+                            <div id="scenarioProgressBar" class="progress-bar bg-purple-500 h-3 rounded-full" style="width: 12.5%"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-8">
+                        <div class="bg-purple-50 rounded-xl p-6 mb-6">
+                            <h3 class="text-xl font-bold text-purple-600 mb-4" id="scenarioTitle"></h3>
+                            <p class="text-gray-700 mb-4" id="scenarioDescription"></p>
+                            <p class="font-semibold text-gray-800" id="scenarioQuestion"></p>
+                        </div>
+                        
+                        <div class="space-y-3" id="scenarioOptions">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Results Modal -->
+        <div id="resultsModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div class="bg-white rounded-2xl p-8 max-w-md mx-4 text-center">
+                <div id="resultsIcon" class="text-6xl mb-4"></div>
+                <h3 id="resultsTitle" class="game-font text-2xl mb-4"></h3>
+                <p id="resultsMessage" class="text-gray-600 mb-6"></p>
+                <div id="resultsScore" class="text-3xl font-bold text-blue-600 mb-2"></div>
+                <div id="resultsComparison" class="text-sm text-gray-600 mb-6"></div>
+                <button onclick="closeResults()" class="bg-blue-500 hover:bg-blue-600 text-white px-8 py-3 rounded-full font-semibold transition-colors">
+                    Продолжить приключение
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Game Data
+        const gameData = {
+            totalScore: 0,
+            zoneScores: [0, 0, 0, 0, 0], // Best scores for each zone
+            unlockedZones: [true, false, false, false, false],
+            currentZone: 0,
+            currentQuestion: 0,
+            gameState: {}
+        };
+
+        // Russian Idioms database
+        const idiomsData = {
+            zone1: [
+                { idiom: "Не в своей тарелке", meaning: "Испытывать дискомфорт; чувствовать неловкость" },
+                { idiom: "Как с гуся вода", meaning: "Ничто не влияет; без последствий" },
+                { idiom: "Дать зелёный свет", meaning: "Дать разрешение; согласовать" },
+                { idiom: "Вешать лапшу на уши", meaning: "Рассказывать неправду; обманывать" },
+                { idiom: "Бить баклуши", meaning: "Бездельничать; ничего не делать" },
+                { idiom: "Делать из мухи слона", meaning: "Преувеличивать незначительные вещи" },
+                { idiom: "Ни пуха ни пера", meaning: "Пожелание удачи" },
+                { idiom: "Ни слуху ни духу", meaning: "Полное молчание; отсутствие новостей" },
+                { idiom: "Лить крокодиловы слёзы", meaning: "Проявлять показную печаль" },
+                { idiom: "Без царя в голове", meaning: "Быть глупым или несобранным" }
+            ],
+            zone2: [
+                { idiom: "Не в своей тарелке", meaning: "Испытывать неловкость", correct: true },
+                { idiom: "Как с гуся вода", meaning: "Без последствий", correct: true },
+                { idiom: "Лить крокодиловы слёзы", meaning: "Искренне плакать", correct: false },
+                { idiom: "Ни пуха ни пера", meaning: "Пожелать успеха", correct: true },
+                { idiom: "Бить баклуши", meaning: "Усердно трудиться", correct: false },
+                { idiom: "Делать из мухи слона", meaning: "Сильно преувеличивать", correct: true },
+                { idiom: "Вешать лапшу на уши", meaning: "Обманывать", correct: true },
+                { idiom: "Без царя в голове", meaning: "Быть глупым", correct: true },
+                { idiom: "Дать зелёный свет", meaning: "Запретить", correct: false },
+                { idiom: "Ни слуху ни духу", meaning: "Нет новостей", correct: true }
+            ],
+            zone3: [
+                { sentence: "На новой работе я чувствую себя ______.", answer: "не в своей тарелке", options: ["не в своей тарелке", "как с гуся вода", "без царя в голове", "на все сто"] },
+                { sentence: "Критика ______ - он не обращает внимания.", answer: "как с гуся вода", options: ["как с гуся вода", "не в своей тарелке", "делает из мухи слона", "вешает лапшу"] },
+                { sentence: "Начальник наконец ______ нашему проекту.", answer: "дал зелёный свет", options: ["дал зелёный свет", "повесил лапшу", "побил баклуши", "сделал из мухи слона"] },
+                { sentence: "Не стоит ему верить, он часто ______.", answer: "вешает лапшу на уши", options: ["вешает лапшу на уши", "бьёт баклуши", "даёт зелёный свет", "льёт крокодиловы слёзы"] },
+                { sentence: "Вместо работы он весь день ______.", answer: "бил баклуши", options: ["бил баклуши", "вешал лапшу", "давал зелёный свет", "лил слёзы"] },
+                { sentence: "Не нужно ______ из-за такой мелочи.", answer: "делать из мухи слона", options: ["делать из мухи слона", "бить баклуши", "вешать лапшу", "лить слёзы"] },
+                { sentence: "Перед экзаменом друзья пожелали мне ______.", answer: "ни пуха ни пера", options: ["ни пуха ни пера", "ни слуху ни духу", "зелёный свет", "крокодиловы слёзы"] },
+                { sentence: "От него уже месяц ______.", answer: "ни слуху ни духу", options: ["ни слуху ни духу", "ни пуха ни пера", "как с гуся вода", "крокодиловы слёзы"] },
+                { sentence: "Он ______ о своих неудачах, но на самом деле не переживает.", answer: "льёт крокодиловы слёзы", options: ["льёт крокодиловы слёзы", "делает из мухи слона", "бьёт баклуши", "вешает лапшу"] },
+                { sentence: "Этот человек совершенно ______.", answer: "без царя в голове", options: ["без царя в голове", "не в своей тарелке", "как с гуся вода", "из мухи слон"] }
+            ],
+            zone4: [
+                { idiom: "Не в своей тарелке", options: ["Чувствовать себя как дома", "Испытывать дискомфорт", "Быть сытым", "Мечтать"], answer: 1 },
+                { idiom: "Как с гуся вода", options: ["Сильно раздражает", "Без последствий", "Очень больно", "Смешно"], answer: 1 },
+                { idiom: "Дать зелёный свет", options: ["Запретить", "Одобрить", "Отложить", "Игнорировать"], answer: 1 },
+                { idiom: "Вешать лапшу на уши", options: ["Говорить правду", "Обманывать", "Вешать одежду", "Договариваться"], answer: 1 },
+                { idiom: "Бить баклуши", options: ["Усердно трудиться", "Отдыхать", "Бездельничать", "Резать дерево"], answer: 2 },
+                { idiom: "Делать из мухи слона", options: ["Преувеличивать", "Убирать", "Раздражать", "Забывать"], answer: 0 },
+                { idiom: "Ни пуха ни пера", options: ["Неудача", "Успех", "Без перьев", "Без шансов"], answer: 1 },
+                { idiom: "Лить крокодиловы слёзы", options: ["Искренние слёзы", "Фальшивая печаль", "Слизистые слёзы", "Громкий смех"], answer: 1 },
+                { idiom: "Без царя в голове", options: ["Умный", "Рассеянный", "Глупый", "Энергичный"], answer: 2 },
+                { idiom: "Ни слуху ни духу", options: ["Полная тишина", "Очень громко", "Что-то пахнет", "Внезапно ветрено"], answer: 0 },
+                { idiom: "Сломать лёд", options: ["Разрушить что-то", "Начать разговор", "Почувствовать холод", "Ошибиться"], answer: 1 },
+                { idiom: "Подливать масло в огонь", options: ["Готовить еду", "Усугублять ситуацию", "Тушить пожар", "Заправлять машину"], answer: 1 },
+                { idiom: "Когда рак на горе свистнет", options: ["Очень скоро", "Никогда", "Иногда", "Вчера"], answer: 1 },
+                { idiom: "Водить за нос", options: ["Вести правильно", "Обманывать", "Идти пешком", "Учить"], answer: 1 },
+                { idiom: "Держать язык за зубами", options: ["Говорить много", "Молчать", "Чистить зубы", "Есть быстро"], answer: 1 },
+                { idiom: "Собачий холод", options: ["Тёплая погода", "Очень холодно", "Дождливо", "Солнечно"], answer: 1 },
+                { idiom: "На всех парах", options: ["Медленно", "Очень быстро", "Тихо", "Аккуратно"], answer: 1 },
+                { idiom: "Медвежья услуга", options: ["Хорошая помощь", "Плохая помощь", "Дорогая услуга", "Быстрая помощь"], answer: 1 },
+                { idiom: "Белая ворона", options: ["Обычный человек", "Странный человек", "Чёрная птица", "Умная птица"], answer: 1 },
+                { idiom: "Золотые руки", options: ["Дорогие украшения", "Умелые руки", "Жёлтые руки", "Больные руки"], answer: 1 }
+            ],
+            zone5: [
+                {
+                    title: "Первый день на новой работе",
+                    description: "Вы нервничаете при встрече с коллегами.",
+                    question: "Что поможет разрядить обстановку?",
+                    options: [
+                        { text: "Начну разговор о хобби и общих интересах.", idiom: "сломать лёд", correct: true },
+                        { text: "Буду весь день бездельничать.", idiom: "бить баклуши", correct: false },
+                        { text: "Начну критиковать руководство.", idiom: "подливать масло в огонь", correct: false },
+                        { text: "Расскажу неправдивые истории.", idiom: "вешать лапшу на уши", correct: false }
+                    ]
+                },
+                {
+                    title: "Отсутствие новостей от друга",
+                    description: "Не было вестей от сокурсника несколько недель.",
+                    question: "Как описать ситуацию?",
+                    options: [
+                        { text: "От него ни слуху ни духу.", idiom: "ни слуху ни духу", correct: true },
+                        { text: "Постоянно желаю ему ни пуха ни пера.", idiom: "ни пуха ни пера", correct: false },
+                        { text: "Думаю, он вешает мне лапшу на уши.", idiom: "вешать лапшу на уши", correct: false },
+                        { text: "Считаю, что он без царя в голове.", idiom: "без царя в голове", correct: false }
+                    ]
+                },
+                {
+                    title: "Задержка ремонта кухни",
+                    description: "Плиточник обещал вчера - не пришёл.",
+                    question: "Когда он, по-вашему, появится?",
+                    options: [
+                        { text: "Когда рак на горе свистнет.", idiom: "когда рак на горе свистнет", correct: true },
+                        { text: "Когда соседи дадут зелёный свет.", idiom: "дать зелёный свет", correct: false },
+                        { text: "Когда от него будут вести.", idiom: "ни слуху ни духу", correct: false },
+                        { text: "Когда перестанёт бить баклуши.", idiom: "бить баклуши", correct: false }
+                    ]
+                },
+                {
+                    title: "Нечестный продавец",
+                    description: "Продавец рассказывает вам полуправду, чтобы продать.",
+                    question: "Какое выражение подойдёт?",
+                    options: [
+                        { text: "Он вешает мне лапшу на уши.", idiom: "вешать лапшу на уши", correct: true },
+                        { text: "Он просто бьёт баклуши.", idiom: "бить баклуши", correct: false },
+                        { text: "Он подливает масло в огонь.", idiom: "подливать масло в огонь", correct: false },
+                        { text: "Он даёт зелёный свет сделке.", idiom: "дать зелёный свет", correct: false }
+                    ]
+                },
+                {
+                    title: "Сложный экзамен завтра",
+                    description: "У друга завтра важный зачёт.",
+                    question: "Как лучше пожелать успеха?",
+                    options: [
+                        { text: "Ни пуха ни пера!", idiom: "ни пуха ни пера", correct: true },
+                        { text: "Это когда рак на горе свистнет.", idiom: "когда рак на горе свистнет", correct: false },
+                        { text: "Иди бей баклуши.", idiom: "бить баклуши", correct: false },
+                        { text: "Лей крокодиловы слёзы.", idiom: "лить крокодиловы слёзы", correct: false }
+                    ]
+                },
+                {
+                    title: "Забытая домашняя работа",
+                    description: "Вы не сделали задание, учитель спрашивает.",
+                    question: "Как описать состояние?",
+                    options: [
+                        { text: "Я чувствую себя не в своей тарелке.", idiom: "не в своей тарелке", correct: true },
+                        { text: "Я бил баклуши всю ночь.", idiom: "бить баклуши", correct: false },
+                        { text: "Я дал себе зелёный свет на провал.", idiom: "дать зелёный свет", correct: false },
+                        { text: "Я лью крокодиловы слёзы.", idiom: "лить крокодиловы слёзы", correct: false }
+                    ]
+                },
+                {
+                    title: "Офисные сплетни",
+                    description: "В чате распространяются слухи.",
+                    question: "Какое выражение описывает их действия?",
+                    options: [
+                        { text: "Они подливают масло в огонь.", idiom: "подливать масло в огонь", correct: true },
+                        { text: "Они бьют баклуши.", idiom: "бить баклуши", correct: false },
+                        { text: "Они дают зелёный свет.", idiom: "дать зелёный свет", correct: false },
+                        { text: "От них ни слуху ни духу.", idiom: "ни слуху ни духу", correct: false }
+                    ]
+                },
+                {
+                    title: "Напряжённые переговоры",
+                    description: "Нужно успокоить аудиторию.",
+                    question: "Какой приём сработает?",
+                    options: [
+                        { text: "Нужно сломать лёд.", idiom: "сломать лёд", correct: true },
+                        { text: "Дать зелёный свет.", idiom: "дать зелёный свет", correct: false },
+                        { text: "Подлить масло в огонь.", idiom: "подливать масло в огонь", correct: false },
+                        { text: "Пожелать ни пуха ни пера.", idiom: "ни пуха ни пера", correct: false }
+                    ]
+                }
+            ]
+        };
+
+        // Initialize game
+        function initGame() {
+            updateDisplay();
+        }
+
+        function updateDisplay() {
+            // Calculate total score from best zone scores
+            gameData.totalScore = gameData.zoneScores.reduce((total, score) => total + score, 0);
+            
+            document.getElementById('totalScore').textContent = gameData.totalScore;
+            document.getElementById('overallProgress').style.width = `${Math.min(gameData.totalScore / 600 * 100, 100)}%`;
+            
+            // Update zone scores display
+            for (let i = 0; i < 5; i++) {
+                document.getElementById(`zone${i+1}Score`).textContent = `Лучший результат: ${gameData.zoneScores[i]}`;
+            }
+            
+            // Update zone locks
+            for (let i = 0; i < 5; i++) {
+                const zoneCard = document.querySelector(`[data-zone="${i+1}"]`);
+                const button = zoneCard.querySelector('button');
+                
+                if (gameData.unlockedZones[i]) {
+                    zoneCard.classList.remove('zone-locked');
+                    zoneCard.querySelectorAll('h3, p, span').forEach(el => {
+                        el.classList.remove('text-gray-400');
+                        if (el.tagName === 'H3') el.classList.add('text-blue-600');
+                        else el.classList.add('text-gray-600');
+                    });
+                    button.className = 'bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-full font-semibold transition-colors';
+                    button.textContent = gameData.zoneScores[i] > 0 ? 'Играть снова' : 'Начать приключение';
+                    button.onclick = () => startZone(i + 1);
+                }
+            }
+            
+            // Update rank
+            updatePlayerRank();
+        }
+
+        function updatePlayerRank() {
+            const rankElement = document.getElementById('playerRank');
+            if (gameData.totalScore >= 500) {
+                rankElement.textContent = 'Мастер Идиом 🏆';
+            } else if (gameData.totalScore >= 400) {
+                rankElement.textContent = 'Опытный Исследователь 🧭';
+            } else {
+                rankElement.textContent = 'Продолжайте практиковаться 💡';
+            }
+        }
+
+        function startZone(zoneNum) {
+            gameData.currentZone = zoneNum;
+            gameData.currentQuestion = 0;
+            
+            document.getElementById('mainMenu').classList.add('hidden');
+            document.getElementById('gameScreen').classList.remove('hidden');
+            
+            // Hide all game zones
+            for (let i = 1; i <= 5; i++) {
+                document.getElementById(`zone${i}Game`).classList.add('hidden');
+            }
+            
+            // Show current zone
+            document.getElementById(`zone${zoneNum}Game`).classList.remove('hidden');
+            
+            // Set zone title and description
+            const zoneInfo = {
+                1: { title: '🏖️ Бухта Сопоставлений', desc: 'Сопоставьте идиомы с их значениями' },
+                2: { title: '⛰️ Скалы Обмана', desc: 'Вызовы Правда или Ложь' },
+                3: { title: '💎 Сокровищница', desc: 'Заполните пропуски' },
+                4: { title: '⚡ Молниеносная Лагуна', desc: 'Скоростная викторина' },
+                5: { title: '🌀 Лабиринт Идиом', desc: 'Сценарные вызовы' }
+            };
+            
+            document.getElementById('zoneTitle').textContent = zoneInfo[zoneNum].title;
+            document.getElementById('zoneDescription').textContent = zoneInfo[zoneNum].desc;
+            document.getElementById('currentScore').textContent = '0';
+            document.getElementById('bestScore').textContent = gameData.zoneScores[zoneNum - 1];
+            
+            // Initialize specific zone
+            switch(zoneNum) {
+                case 1: initZone1(); break;
+                case 2: initZone2(); break;
+                case 3: initZone3(); break;
+                case 4: initZone4(); break;
+                case 5: initZone5(); break;
+            }
+        }
+
+        // Zone 1: Match-Up Bay
+        function initZone1() {
+            const idioms = [...idiomsData.zone1];
+            const meanings = [...idiomsData.zone1.map(item => item.meaning)];
+            
+            // Shuffle meanings
+            for (let i = meanings.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [meanings[i], meanings[j]] = [meanings[j], meanings[i]];
+            }
+            
+            gameData.gameState = { idioms, meanings, matches: {} };
+            
+            renderMatchingGame();
+        }
+
+        function renderMatchingGame() {
+            const idiomsColumn = document.getElementById('idiomsColumn');
+            const meaningsColumn = document.getElementById('meaningsColumn');
+            
+            idiomsColumn.innerHTML = '';
+            meaningsColumn.innerHTML = '';
+            
+            gameData.gameState.idioms.forEach((item, index) => {
+                const idiomDiv = document.createElement('div');
+                idiomDiv.className = 'drag-item bg-blue-100 border-2 border-blue-300 rounded-lg p-3 text-center font-semibold cursor-grab';
+                idiomDiv.draggable = true;
+                idiomDiv.textContent = item.idiom;
+                idiomDiv.dataset.idiom = item.idiom;
+                idiomDiv.addEventListener('dragstart', handleDragStart);
+                idiomsColumn.appendChild(idiomDiv);
+            });
+            
+            gameData.gameState.meanings.forEach((meaning, index) => {
+                const meaningDiv = document.createElement('div');
+                meaningDiv.className = 'drop-zone bg-gray-50 border-2 border-gray-300 rounded-lg p-3 text-center min-h-[60px] flex items-center justify-center';
+                meaningDiv.dataset.meaning = meaning;
+                meaningDiv.textContent = meaning;
+                meaningDiv.addEventListener('dragover', handleDragOver);
+                meaningDiv.addEventListener('drop', handleDrop);
+                meaningsColumn.appendChild(meaningDiv);
+            });
+        }
+
+        function handleDragStart(e) {
+            e.dataTransfer.setData('text/plain', e.target.dataset.idiom);
+        }
+
+        function handleDragOver(e) {
+            e.preventDefault();
+            e.target.classList.add('drag-over');
+        }
+
+        function handleDrop(e) {
+            e.preventDefault();
+            e.target.classList.remove('drag-over');
+            
+            const idiom = e.dataTransfer.getData('text/plain');
+            const meaning = e.target.dataset.meaning;
+            
+            gameData.gameState.matches[idiom] = meaning;
+            
+            // Visual feedback
+            e.target.innerHTML = `<div class="font-semibold text-blue-600">${idiom}</div><div class="text-sm text-gray-600">${meaning}</div>`;
+            e.target.classList.add('bg-blue-50', 'border-blue-400');
+            
+            // Hide the dragged item
+            const draggedItem = document.querySelector(`[data-idiom="${idiom}"]`);
+            if (draggedItem) draggedItem.style.opacity = '0.3';
+            
+            updateMatchProgress();
+        }
+
+        function updateMatchProgress() {
+            const matchCount = Object.keys(gameData.gameState.matches).length;
+            document.getElementById('matchProgress').textContent = `${matchCount}/10`;
+            document.getElementById('matchProgressBar').style.width = `${matchCount * 10}%`;
+        }
+
+        function checkMatches() {
+            let correctMatches = 0;
+            const matches = gameData.gameState.matches;
+            
+            gameData.gameState.idioms.forEach(item => {
+                const dropZone = document.querySelector(`[data-meaning="${matches[item.idiom]}"]`);
+                if (matches[item.idiom] === item.meaning) {
+                    correctMatches++;
+                    if (dropZone) dropZone.classList.add('correct-match');
+                } else if (matches[item.idiom]) {
+                    if (dropZone) dropZone.classList.add('wrong-match');
+                }
+            });
+            
+            const currentScore = correctMatches * 10;
+            const zoneIndex = 0;
+            const previousBest = gameData.zoneScores[zoneIndex];
+            const isNewRecord = currentScore > previousBest;
+            
+            // Update best score only if this is better
+            if (isNewRecord) {
+                gameData.zoneScores[zoneIndex] = currentScore;
+            }
+            
+            // Check if zone 2 should be unlocked (80% accuracy)
+            if (correctMatches >= 8) {
+                gameData.unlockedZones[1] = true;
+            }
+            
+            showResults(1, currentScore, correctMatches, 10, previousBest, isNewRecord);
+        }
+
+        // Zone 2: True/False
+        function initZone2() {
+            gameData.gameState = {
+                questions: [...idiomsData.zone2],
+                currentQ: 0,
+                score: 0,
+                lives: 3,
+                correctAnswers: 0
+            };
+            
+            showTrueFalseQuestion();
+        }
+
+        function showTrueFalseQuestion() {
+            const state = gameData.gameState;
+            const question = state.questions[state.currentQ];
+            
+            document.getElementById('tfQuestionNum').textContent = state.currentQ + 1;
+            document.getElementById('livesCount').textContent = state.lives;
+            document.getElementById('tfIdiom').textContent = question.idiom;
+            document.getElementById('tfDefinition').textContent = question.meaning;
+            document.getElementById('tfProgressBar').style.width = `${(state.currentQ + 1) * 10}%`;
+        }
+
+        function answerTrueFalse(userAnswer) {
+            const state = gameData.gameState;
+            const question = state.questions[state.currentQ];
+            const correct = userAnswer === question.correct;
+            
+            if (correct) {
+                state.score += 5;
+                state.correctAnswers++;
+                document.getElementById('currentScore').textContent = state.score;
+            } else {
+                state.lives--;
+                state.score = Math.max(0, state.score - 2);
+                document.getElementById('currentScore').textContent = state.score;
+                
+                if (state.lives <= 0) {
+                    // Reset to start of zone
+                    state.currentQ = 0;
+                    state.lives = 3;
+                    state.score = 0;
+                    showTrueFalseQuestion();
+                    return;
+                }
+            }
+            
+            state.currentQ++;
+            
+            if (state.currentQ >= state.questions.length) {
+                // Zone complete
+                const zoneIndex = 1;
+                const previousBest = gameData.zoneScores[zoneIndex];
+                const isNewRecord = state.score > previousBest;
+                
+                if (isNewRecord) {
+                    gameData.zoneScores[zoneIndex] = state.score;
+                }
+                
+                gameData.unlockedZones[2] = true; // Unlock zone 3
+                showResults(2, state.score, state.correctAnswers, state.questions.length, previousBest, isNewRecord);
+            } else {
+                setTimeout(showTrueFalseQuestion, 1000);
+            }
+        }
+
+        // Zone 3: Fill in the Blank
+        function initZone3() {
+            gameData.gameState = {
+                questions: [...idiomsData.zone3],
+                currentQ: 0,
+                score: 0,
+                correctAnswers: 0
+            };
+            
+            showFillBlankQuestion();
+        }
+
+        function showFillBlankQuestion() {
+            const state = gameData.gameState;
+            const question = state.questions[state.currentQ];
+            
+            document.getElementById('fibQuestionNum').textContent = state.currentQ + 1;
+            document.getElementById('fibSentence').textContent = question.sentence;
+            document.getElementById('fibProgressBar').style.width = `${(state.currentQ + 1) * 10}%`;
+            
+            // Populate select options
+            const select = document.getElementById('fibSelect');
+            select.innerHTML = '<option value="">Выберите идиому...</option>';
+            question.options.forEach(option => {
+                const optionEl = document.createElement('option');
+                optionEl.value = option;
+                optionEl.textContent = option;
+                select.appendChild(optionEl);
+            });
+            
+            // Clear bonus textarea
+            document.getElementById('bonusSentence').value = '';
+        }
+
+        function submitFillBlank() {
+            const state = gameData.gameState;
+            const question = state.questions[state.currentQ];
+            const userAnswer = document.getElementById('fibSelect').value;
+            
+            if (!userAnswer) {
+                alert('Пожалуйста, сначала выберите идиому!');
+                return;
+            }
+            
+            const correct = userAnswer === question.answer;
+            
+            if (correct) {
+                state.score += 15;
+                state.correctAnswers++;
+                document.getElementById('currentScore').textContent = state.score;
+            }
+            
+            // Move to next question or finish
+            state.currentQ++;
+            
+            if (state.currentQ >= state.questions.length) {
+                const zoneIndex = 2;
+                const previousBest = gameData.zoneScores[zoneIndex];
+                const isNewRecord = state.score > previousBest;
+                
+                if (isNewRecord) {
+                    gameData.zoneScores[zoneIndex] = state.score;
+                }
+                
+                gameData.unlockedZones[3] = true; // Unlock zone 4
+                showResults(3, state.score, state.correctAnswers, state.questions.length, previousBest, isNewRecord);
+            } else {
+                setTimeout(showFillBlankQuestion, 1000);
+            }
+        }
+
+        function submitBonus() {
+            const bonusText = document.getElementById('bonusSentence').value.trim();
+            if (bonusText.length > 10) { // Simple validation
+                gameData.gameState.score += 5;
+                document.getElementById('currentScore').textContent = gameData.gameState.score;
+                alert('Бонусные очки начислены! +5 очков');
+                document.getElementById('bonusSentence').value = '';
+            } else {
+                alert('Пожалуйста, напишите более длинное предложение для получения бонусных очков!');
+            }
+        }
+
+        // Zone 4: Lightning Round
+        function initZone4() {
+            gameData.gameState = {
+                questions: [...idiomsData.zone4],
+                currentQ: 0,
+                score: 0,
+                timeLeft: 60,
+                correctAnswers: 0,
+                timer: null
+            };
+            
+            startLightningTimer();
+            showLightningQuestion();
+        }
+
+        function startLightningTimer() {
+            const state = gameData.gameState;
+            document.getElementById('timerDisplay').classList.remove('hidden');
+            
+            state.timer = setInterval(() => {
+                state.timeLeft--;
+                const timerEl = document.getElementById('lrTimer');
+                timerEl.textContent = state.timeLeft;
+                
+                if (state.timeLeft <= 10) {
+                    timerEl.classList.add('timer-warning');
+                }
+                
+                if (state.timeLeft <= 0) {
+                    clearInterval(state.timer);
+                    finishLightningRound();
+                }
+            }, 1000);
+        }
+
+        function showLightningQuestion() {
+            const state = gameData.gameState;
+            const question = state.questions[state.currentQ];
+            
+            document.getElementById('lrQuestionNum').textContent = state.currentQ + 1;
+            document.getElementById('lrIdiom').textContent = question.idiom;
+            document.getElementById('lrProgressBar').style.width = `${(state.currentQ + 1) * 5}%`;
+            
+            const optionsContainer = document.getElementById('lrOptions');
+            optionsContainer.innerHTML = '';
+            
+            question.options.forEach((option, index) => {
+                const button = document.createElement('button');
+                button.className = 'bg-yellow-100 hover:bg-yellow-200 border-2 border-yellow-300 rounded-lg p-4 font-semibold transition-colors';
+                button.textContent = option;
+                button.onclick = () => answerLightning(index);
+                optionsContainer.appendChild(button);
+            });
+        }
+
+        function answerLightning(selectedIndex) {
+            const state = gameData.gameState;
+            const question = state.questions[state.currentQ];
+            const correct = selectedIndex === question.answer;
+            
+            if (correct) {
+                state.score += 5 + Math.floor(state.timeLeft / 10); // Base points + time bonus
+                state.correctAnswers++;
+                document.getElementById('currentScore').textContent = state.score;
+            }
+            
+            state.currentQ++;
+            
+            if (state.currentQ >= state.questions.length || state.timeLeft <= 0) {
+                finishLightningRound();
+            } else {
+                showLightningQuestion();
+            }
+        }
+
+        function finishLightningRound() {
+            const state = gameData.gameState;
+            clearInterval(state.timer);
+            document.getElementById('timerDisplay').classList.add('hidden');
+            
+            const zoneIndex = 3;
+            const previousBest = gameData.zoneScores[zoneIndex];
+            const isNewRecord = state.score > previousBest;
+            
+            if (isNewRecord) {
+                gameData.zoneScores[zoneIndex] = state.score;
+            }
+            
+            gameData.unlockedZones[4] = true; // Unlock final zone
+            showResults(4, state.score, state.correctAnswers, Math.min(state.questions.length, 20), previousBest, isNewRecord);
+        }
+
+        // Zone 5: Scenario Game
+        function initZone5() {
+            gameData.gameState = {
+                scenarios: [...idiomsData.zone5],
+                currentS: 0,
+                score: 0,
+                correctAnswers: 0
+            };
+            
+            showScenario();
+        }
+
+        function showScenario() {
+            const state = gameData.gameState;
+            const scenario = state.scenarios[state.currentS];
+            
+            document.getElementById('scenarioNum').textContent = state.currentS + 1;
+            document.getElementById('scenarioTitle').textContent = scenario.title;
+            document.getElementById('scenarioDescription').textContent = scenario.description;
+            document.getElementById('scenarioQuestion').textContent = scenario.question;
+            document.getElementById('scenarioProgressBar').style.width = `${(state.currentS + 1) * 12.5}%`;
+            
+            const optionsContainer = document.getElementById('scenarioOptions');
+            optionsContainer.innerHTML = '';
+            
+            scenario.options.forEach((option, index) => {
+                const button = document.createElement('button');
+                button.className = 'bg-purple-100 hover:bg-purple-200 border-2 border-purple-300 rounded-lg p-4 text-left transition-colors w-full';
+                button.innerHTML = `<div class="font-semibold">${option.text}</div><div class="text-sm text-gray-600 mt-1">Используя: "${option.idiom}"</div>`;
+                button.onclick = () => answerScenario(index);
+                optionsContainer.appendChild(button);
+            });
+        }
+
+        function answerScenario(selectedIndex) {
+            const state = gameData.gameState;
+            const scenario = state.scenarios[state.currentS];
+            const correct = scenario.options[selectedIndex].correct;
+            
+            if (correct) {
+                state.score += 20;
+                state.correctAnswers++;
+                document.getElementById('currentScore').textContent = state.score;
+            }
+            
+            state.currentS++;
+            
+            if (state.currentS >= state.scenarios.length) {
+                const zoneIndex = 4;
+                const previousBest = gameData.zoneScores[zoneIndex];
+                const isNewRecord = state.score > previousBest;
+                
+                if (isNewRecord) {
+                    gameData.zoneScores[zoneIndex] = state.score;
+                }
+                
+                showResults(5, state.score, state.correctAnswers, state.scenarios.length, previousBest, isNewRecord);
+            } else {
+                setTimeout(showScenario, 1500);
+            }
+        }
+
+        // Results and Navigation
+        function showResults(zone, currentScore, correct, total, previousBest, isNewRecord) {
+            const modal = document.getElementById('resultsModal');
+            const icon = document.getElementById('resultsIcon');
+            const title = document.getElementById('resultsTitle');
+            const message = document.getElementById('resultsMessage');
+            const scoreDisplay = document.getElementById('resultsScore');
+            const comparisonDisplay = document.getElementById('resultsComparison');
+            
+            const percentage = Math.round((correct / total) * 100);
+            
+            if (percentage >= 80) {
+                icon.textContent = isNewRecord ? '🎉' : '✨';
+                title.textContent = isNewRecord ? 'Новый рекорд!' : 'Отличная работа!';
+                message.textContent = `Вы освоили эту зону с точностью ${percentage}%!`;
+            } else if (percentage >= 60) {
+                icon.textContent = '👍';
+                title.textContent = 'Хорошая работа!';
+                message.textContent = `Вы ответили правильно на ${percentage}%. Продолжайте практиковаться!`;
+            } else {
+                icon.textContent = '💪';
+                title.textContent = 'Продолжайте стараться!';
+                message.textContent = `Вы ответили правильно на ${percentage}%. Практика - путь к совершенству!`;
+            }
+            
+            scoreDisplay.textContent = `${currentScore} очков`;
+            
+            if (isNewRecord && previousBest > 0) {
+                comparisonDisplay.textContent = `Новый рекорд! Предыдущий лучший: ${previousBest}`;
+                comparisonDisplay.className = 'text-sm text-green-600 mb-6 font-semibold';
+            } else if (previousBest > 0) {
+                comparisonDisplay.textContent = `Лучший результат: ${Math.max(currentScore, previousBest)}`;
+                comparisonDisplay.className = 'text-sm text-gray-600 mb-6';
+            } else {
+                comparisonDisplay.textContent = '';
+            }
+            
+            modal.classList.remove('hidden');
+        }
+
+        function closeResults() {
+            document.getElementById('resultsModal').classList.add('hidden');
+            returnToMenu();
+        }
+
+        function returnToMenu() {
+            document.getElementById('gameScreen').classList.add('hidden');
+            document.getElementById('mainMenu').classList.remove('hidden');
+            updateDisplay();
+        }
+
+        // Initialize the game when page loads
+        initGame();
+    </script>
+</body>
+</html>

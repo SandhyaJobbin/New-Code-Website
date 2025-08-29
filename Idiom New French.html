@@ -1,0 +1,1087 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aventure de l'Île aux Expressions</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fredoka+One:wght@400&family=Inter:wght@400;500;600;700&display=swap');
+        
+        .game-font { font-family: 'Fredoka One', cursive; }
+        .body-font { font-family: 'Inter', sans-serif; }
+        
+        .island-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .zone-card {
+            transition: all 0.3s ease;
+            transform: translateY(0);
+        }
+        
+        .zone-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+        
+        .zone-locked {
+            opacity: 0.6;
+            filter: grayscale(100%);
+        }
+        
+        .progress-bar {
+            transition: width 0.5s ease;
+        }
+        
+        .drag-item {
+            cursor: grab;
+            transition: all 0.2s ease;
+        }
+        
+        .drag-item:hover {
+            transform: scale(1.05);
+        }
+        
+        .drop-zone {
+            min-height: 60px;
+            transition: all 0.2s ease;
+        }
+        
+        .drop-zone.drag-over {
+            background-color: #e0f2fe;
+            border-color: #0284c7;
+        }
+        
+        .correct-match {
+            background-color: #dcfce7 !important;
+            border-color: #16a34a !important;
+        }
+        
+        .wrong-match {
+            background-color: #fef2f2 !important;
+            border-color: #dc2626 !important;
+        }
+        
+        @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+            40% { transform: translateY(-10px); }
+            60% { transform: translateY(-5px); }
+        }
+        
+        .bounce-animation {
+            animation: bounce 0.6s;
+        }
+        
+        .timer-warning {
+            animation: pulse 1s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+    </style>
+</head>
+<body class="island-bg body-font">
+    <div id="app" class="min-h-screen">
+        <!-- Main Menu -->
+        <div id="mainMenu" class="container mx-auto px-4 py-8">
+            <div class="text-center mb-12">
+                <h1 class="game-font text-6xl text-white mb-4">🏝️ Aventure de l'Île aux Expressions</h1>
+                <p class="text-xl text-blue-100 mb-8">Maîtrisez les expressions françaises à travers des défis insulaires passionnants !</p>
+                
+                <!-- Player Stats -->
+                <div class="bg-white/20 backdrop-blur-sm rounded-2xl p-6 max-w-md mx-auto mb-8">
+                    <div class="flex justify-between items-center mb-4">
+                        <span class="text-white font-semibold">Score Total :</span>
+                        <span id="totalScore" class="text-2xl font-bold text-yellow-300">0</span>
+                    </div>
+                    <div class="w-full bg-white/20 rounded-full h-3">
+                        <div id="overallProgress" class="progress-bar bg-gradient-to-r from-yellow-400 to-orange-500 h-3 rounded-full" style="width: 0%"></div>
+                    </div>
+                    <p class="text-blue-100 text-sm mt-2">Progression vers Maître des Expressions</p>
+                </div>
+            </div>
+            
+            <!-- Zone Selection -->
+            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
+                <!-- Zone 1: Match-Up Bay -->
+                <div class="zone-card bg-white rounded-2xl p-6 shadow-xl" data-zone="1">
+                    <div class="text-center">
+                        <div class="text-4xl mb-4">🏖️</div>
+                        <h3 class="game-font text-2xl text-blue-600 mb-2">Match-Up Bay</h3>
+                        <p class="text-gray-600 mb-4">Associez les expressions à leurs significations</p>
+                        <div class="flex justify-between text-sm text-gray-500 mb-4">
+                            <span>Max : 100 pts</span>
+                            <span id="zone1Score">Score : 0</span>
+                        </div>
+                        <button onclick="startZone(1)" class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-full font-semibold transition-colors">
+                            Commencer l'Aventure
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Zone 2: Bluff Cliffs -->
+                <div class="zone-card bg-white rounded-2xl p-6 shadow-xl zone-locked" data-zone="2">
+                    <div class="text-center">
+                        <div class="text-4xl mb-4">⛰️</div>
+                        <h3 class="game-font text-2xl text-gray-400 mb-2">Bluff Cliffs</h3>
+                        <p class="text-gray-400 mb-4">Défis Vrai ou Faux</p>
+                        <div class="flex justify-between text-sm text-gray-400 mb-4">
+                            <span>Max : 100 pts</span>
+                            <span id="zone2Score">Score : 0</span>
+                        </div>
+                        <button class="bg-gray-300 text-gray-500 px-6 py-2 rounded-full font-semibold cursor-not-allowed">
+                            🔒 Verrouillé
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Zone 3: Treasure Trove -->
+                <div class="zone-card bg-white rounded-2xl p-6 shadow-xl zone-locked" data-zone="3">
+                    <div class="text-center">
+                        <div class="text-4xl mb-4">💎</div>
+                        <h3 class="game-font text-2xl text-gray-400 mb-2">Treasure Trove</h3>
+                        <p class="text-gray-400 mb-4">Compléter les blancs</p>
+                        <div class="flex justify-between text-sm text-gray-400 mb-4">
+                            <span>Max : 150 pts</span>
+                            <span id="zone3Score">Score : 0</span>
+                        </div>
+                        <button class="bg-gray-300 text-gray-500 px-6 py-2 rounded-full font-semibold cursor-not-allowed">
+                            🔒 Verrouillé
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Zone 4: Lightning Lagoon -->
+                <div class="zone-card bg-white rounded-2xl p-6 shadow-xl zone-locked" data-zone="4">
+                    <div class="text-center">
+                        <div class="text-4xl mb-4">⚡</div>
+                        <h3 class="game-font text-2xl text-gray-400 mb-2">Lightning Lagoon</h3>
+                        <p class="text-gray-400 mb-4">Quiz rapide</p>
+                        <div class="flex justify-between text-sm text-gray-400 mb-4">
+                            <span>Max : 100 pts</span>
+                            <span id="zone4Score">Score : 0</span>
+                        </div>
+                        <button class="bg-gray-300 text-gray-500 px-6 py-2 rounded-full font-semibold cursor-not-allowed">
+                            🔒 Verrouillé
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Zone 5: Idiom Maze -->
+                <div class="zone-card bg-white rounded-2xl p-6 shadow-xl zone-locked" data-zone="5">
+                    <div class="text-center">
+                        <div class="text-4xl mb-4">🌀</div>
+                        <h3 class="game-font text-2xl text-gray-400 mb-2">The Idiom Maze</h3>
+                        <p class="text-gray-400 mb-4">Défis de scénarios</p>
+                        <div class="flex justify-between text-sm text-gray-400 mb-4">
+                            <span>Max : 150 pts</span>
+                            <span id="zone5Score">Score : 0</span>
+                        </div>
+                        <button class="bg-gray-300 text-gray-500 px-6 py-2 rounded-full font-semibold cursor-not-allowed">
+                            🔒 Verrouillé
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Achievement Badge -->
+                <div class="zone-card bg-gradient-to-br from-yellow-400 to-orange-500 rounded-2xl p-6 shadow-xl">
+                    <div class="text-center text-white">
+                        <div class="text-4xl mb-4">🏆</div>
+                        <h3 class="game-font text-2xl mb-2">Votre Rang</h3>
+                        <p id="playerRank" class="text-lg font-semibold mb-2">Continuez à Pratiquer</p>
+                        <div class="text-sm opacity-90">
+                            <div>🏆 500+ pts : Champion</div>
+                            <div>🧭 400+ pts : Explorateur</div>
+                            <div>💡 0+ pts : Pratique</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Game Screens -->
+        <div id="gameScreen" class="hidden container mx-auto px-4 py-8">
+            <!-- Game Header -->
+            <div class="bg-white/20 backdrop-blur-sm rounded-2xl p-4 mb-6">
+                <div class="flex justify-between items-center">
+                    <button onclick="returnToMenu()" class="bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-lg transition-colors">
+                        ← Retour à l'Île
+                    </button>
+                    <div class="text-center">
+                        <h2 id="zoneTitle" class="game-font text-2xl text-white"></h2>
+                        <p id="zoneDescription" class="text-blue-100"></p>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-white font-semibold">Score : <span id="currentScore">0</span></div>
+                        <div id="timerDisplay" class="text-yellow-300 font-bold hidden"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Zone 1: Match-Up Bay -->
+            <div id="zone1Game" class="hidden">
+                <div class="bg-white rounded-2xl p-6 shadow-xl">
+                    <div class="mb-6">
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="font-semibold">Progression</span>
+                            <span id="matchProgress">0/10</span>
+                        </div>
+                        <div class="w-full bg-gray-200 rounded-full h-3">
+                            <div id="matchProgressBar" class="progress-bar bg-blue-500 h-3 rounded-full" style="width: 0%"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="grid md:grid-cols-2 gap-8">
+                        <div>
+                            <h3 class="font-bold text-lg mb-4 text-center">Expressions</h3>
+                            <div id="idiomsColumn" class="space-y-3"></div>
+                        </div>
+                        <div>
+                            <h3 class="font-bold text-lg mb-4 text-center">Significations</h3>
+                            <div id="meaningsColumn" class="space-y-3"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="text-center mt-6">
+                        <button id="checkMatches" onclick="checkMatches()" class="bg-green-500 hover:bg-green-600 text-white px-8 py-3 rounded-full font-semibold transition-colors">
+                            Vérifier les Réponses
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Zone 2: True/False -->
+            <div id="zone2Game" class="hidden">
+                <div class="bg-white rounded-2xl p-6 shadow-xl max-w-2xl mx-auto">
+                    <div class="mb-6">
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="font-semibold">Question <span id="tfQuestionNum">1</span>/10</span>
+                            <span class="text-red-500 font-semibold">Vies : <span id="livesCount">3</span> ❤️</span>
+                        </div>
+                        <div class="w-full bg-gray-200 rounded-full h-3">
+                            <div id="tfProgressBar" class="progress-bar bg-purple-500 h-3 rounded-full" style="width: 10%"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="text-center mb-8">
+                        <div class="bg-blue-50 rounded-xl p-6 mb-6">
+                            <h3 class="text-2xl font-bold text-blue-600 mb-4" id="tfIdiom"></h3>
+                            <p class="text-lg text-gray-700" id="tfDefinition"></p>
+                        </div>
+                        
+                        <div class="space-x-4">
+                            <button onclick="answerTrueFalse(true)" class="bg-green-500 hover:bg-green-600 text-white px-8 py-4 rounded-full font-bold text-xl transition-colors">
+                                ✓ VRAI
+                            </button>
+                            <button onclick="answerTrueFalse(false)" class="bg-red-500 hover:bg-red-600 text-white px-8 py-4 rounded-full font-bold text-xl transition-colors">
+                                ✗ FAUX
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Zone 3: Fill in the Blank -->
+            <div id="zone3Game" class="hidden">
+                <div class="bg-white rounded-2xl p-6 shadow-xl max-w-2xl mx-auto">
+                    <div class="mb-6">
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="font-semibold">Question <span id="fibQuestionNum">1</span>/10</span>
+                            <span class="font-semibold">Bonus Disponible ! 📝</span>
+                        </div>
+                        <div class="w-full bg-gray-200 rounded-full h-3">
+                            <div id="fibProgressBar" class="progress-bar bg-green-500 h-3 rounded-full" style="width: 10%"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="text-center mb-8">
+                        <div class="bg-green-50 rounded-xl p-6 mb-6">
+                            <p class="text-lg text-gray-700 mb-4" id="fibSentence"></p>
+                            <select id="fibSelect" class="border-2 border-green-300 rounded-lg px-4 py-2 text-lg font-semibold bg-white">
+                                <option value="">Choisir une expression...</option>
+                            </select>
+                        </div>
+                        
+                        <button onclick="submitFillBlank()" class="bg-green-500 hover:bg-green-600 text-white px-8 py-3 rounded-full font-semibold transition-colors mb-4">
+                            Soumettre la Réponse
+                        </button>
+                        
+                        <div class="border-t pt-4">
+                            <p class="text-sm text-gray-600 mb-2">Bonus : Créez votre propre phrase avec cette expression !</p>
+                            <textarea id="bonusSentence" placeholder="Écrivez votre propre phrase en utilisant l'expression..." class="w-full border-2 border-gray-300 rounded-lg p-3 text-sm"></textarea>
+                            <button onclick="submitBonus()" class="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-lg font-semibold mt-2 transition-colors">
+                                Soumettre pour Bonus (+5 pts)
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Zone 4: Lightning Round -->
+            <div id="zone4Game" class="hidden">
+                <div class="bg-white rounded-2xl p-6 shadow-xl max-w-2xl mx-auto">
+                    <div class="mb-6">
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="font-semibold">Question <span id="lrQuestionNum">1</span>/20</span>
+                            <span id="lrTimer" class="text-2xl font-bold text-red-500">60</span>
+                        </div>
+                        <div class="w-full bg-gray-200 rounded-full h-3">
+                            <div id="lrProgressBar" class="progress-bar bg-yellow-500 h-3 rounded-full" style="width: 5%"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="text-center mb-8">
+                        <div class="bg-yellow-50 rounded-xl p-6 mb-6">
+                            <h3 class="text-2xl font-bold text-yellow-600 mb-4" id="lrIdiom"></h3>
+                        </div>
+                        
+                        <div class="grid grid-cols-2 gap-4" id="lrOptions">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Zone 5: Scenario Game -->
+            <div id="zone5Game" class="hidden">
+                <div class="bg-white rounded-2xl p-6 shadow-xl max-w-3xl mx-auto">
+                    <div class="mb-6">
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="font-semibold">Scénario <span id="scenarioNum">1</span>/8</span>
+                            <span class="font-semibold">Défi Final ! 🌟</span>
+                        </div>
+                        <div class="w-full bg-gray-200 rounded-full h-3">
+                            <div id="scenarioProgressBar" class="progress-bar bg-purple-500 h-3 rounded-full" style="width: 12.5%"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-8">
+                        <div class="bg-purple-50 rounded-xl p-6 mb-6">
+                            <h3 class="text-xl font-bold text-purple-600 mb-4" id="scenarioTitle"></h3>
+                            <p class="text-gray-700 mb-4" id="scenarioDescription"></p>
+                            <p class="font-semibold text-gray-800" id="scenarioQuestion"></p>
+                        </div>
+                        
+                        <div class="space-y-3" id="scenarioOptions">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Results Modal -->
+        <div id="resultsModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div class="bg-white rounded-2xl p-8 max-w-md mx-4 text-center">
+                <div id="resultsIcon" class="text-6xl mb-4"></div>
+                <h3 id="resultsTitle" class="game-font text-2xl mb-4"></h3>
+                <p id="resultsMessage" class="text-gray-600 mb-6"></p>
+                <div id="resultsScore" class="text-3xl font-bold text-blue-600 mb-6"></div>
+                <button onclick="closeResults()" class="bg-blue-500 hover:bg-blue-600 text-white px-8 py-3 rounded-full font-semibold transition-colors">
+                    Continuer l'Aventure
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Game Data
+        const gameData = {
+            totalScore: 0,
+            zoneScores: [0, 0, 0, 0, 0],
+            bestScores: [0, 0, 0, 0, 0], // Track best scores separately
+            unlockedZones: [true, false, false, false, false],
+            currentZone: 0,
+            currentQuestion: 0,
+            gameState: {}
+        };
+
+        // French Expressions database from Document3.docx
+        const idiomsData = {
+            zone1: [
+                { idiom: "Tomber dans les pommes", meaning: "S'évanouir" },
+                { idiom: "Avoir le cafard", meaning: "Être déprimé" },
+                { idiom: "Poser un lapin", meaning: "Ne pas venir à un rendez-vous" },
+                { idiom: "Mettre les pieds dans le plat", meaning: "Dire une vérité gênante" },
+                { idiom: "Avoir la main verte", meaning: "Être doué pour le jardinage" },
+                { idiom: "En faire tout un fromage", meaning: "Exagérer l'importance d'une chose" },
+                { idiom: "Les doigts dans le nez", meaning: "Très facilement" },
+                { idiom: "Casser sa pipe", meaning: "Mourir" },
+                { idiom: "Avoir un chat dans la gorge", meaning: "Avoir la voix enrouée" },
+                { idiom: "S'occuper de ses oignons", meaning: "S'occuper de ses affaires" }
+            ],
+            zone2: [
+                { idiom: "Les carottes sont cuites", meaning: "La situation est irrémédiable", correct: true },
+                { idiom: "Donner sa langue au chat", meaning: "Révéler un secret", correct: false },
+                { idiom: "Pleuvoir des cordes", meaning: "Pleuvoir très fort", correct: true },
+                { idiom: "Avoir les yeux plus gros que le ventre", meaning: "Prendre trop de nourriture", correct: true },
+                { idiom: "Chercher midi à quatorze heures", meaning: "Trouver facilement une solution", correct: false },
+                { idiom: "Prendre ses jambes à son cou", meaning: "S'enfuir rapidement", correct: true },
+                { idiom: "Vendre la mèche", meaning: "Garder un secret", correct: false },
+                { idiom: "L'habit ne fait pas le moine", meaning: "Il ne faut pas juger sur l'apparence", correct: true },
+                { idiom: "Après la pluie, le beau temps", meaning: "Les choses finissent toujours mal", correct: false },
+                { idiom: "Avoir d'autres chats à fouetter", meaning: "Avoir d'autres préoccupations", correct: true }
+            ],
+            zone3: [
+                { sentence: "J'ai eu si peur que je suis presque _____", answer: "tombé dans les pommes", options: ["tombé dans les pommes", "cassé ma pipe", "eu le cafard", "posé un lapin"] },
+                { sentence: "Ne t'inquiète pas pour ça, c'est _____", answer: "les doigts dans le nez", options: ["les doigts dans le nez", "tout un fromage", "un chat dans la gorge", "ses oignons"] },
+                { sentence: "Il n'est pas venu au rendez-vous, il m'a _____", answer: "posé un lapin", options: ["posé un lapin", "mis les pieds dans le plat", "donné sa langue au chat", "pris ses jambes à son cou"] },
+                { sentence: "Arrête de _____, ce n'est pas si grave !", answer: "en faire tout un fromage", options: ["en faire tout un fromage", "vendre la mèche", "chercher midi à quatorze heures", "avoir le cafard"] },
+                { sentence: "Depuis qu'elle a perdu son travail, elle _____", answer: "a le cafard", options: ["a le cafard", "s'occupe de ses oignons", "a la main verte", "a les yeux plus gros que le ventre"] },
+                { sentence: "Quand il a vu la police, il a _____", answer: "pris ses jambes à son cou", options: ["pris ses jambes à son cou", "cassé sa pipe", "eu un chat dans la gorge", "mis les pieds dans le plat"] },
+                { sentence: "Je ne peux pas chanter, j'ai _____", answer: "un chat dans la gorge", options: ["un chat dans la gorge", "le cafard", "les yeux plus gros que le ventre", "la main verte"] },
+                { sentence: "Pour cet examen, ce sera _____", answer: "les doigts dans le nez", options: ["les doigts dans le nez", "tout un fromage", "ses oignons", "midi à quatorze heures"] },
+                { sentence: "_____, tu trouveras un autre travail", answer: "Après la pluie, le beau temps", options: ["Après la pluie, le beau temps", "Les carottes sont cuites", "L'habit ne fait pas le moine", "Il pleut des cordes"] },
+                { sentence: "Pourquoi tu _____ ? C'est simple !", answer: "cherches midi à quatorze heures", options: ["cherches midi à quatorze heures", "donnes ta langue au chat", "vends la mèche", "as d'autres chats à fouetter"] }
+            ],
+            zone4: [
+                { idiom: "Avoir le coup de foudre", options: ["Tomber amoureux instantanément", "Avoir peur de l'orage", "Être électrocuté", "Avoir mal à la tête"], answer: 0 },
+                { idiom: "Faire la grasse matinée", options: ["Faire du sport", "Se lever tard le matin", "Prendre le petit-déjeuner", "Aller au lit tôt"], answer: 1 },
+                { idiom: "Raconter des salades", options: ["Cuisiner des légumes", "Raconter des mensonges", "Faire les courses", "Préparer un repas"], answer: 1 },
+                { idiom: "Rouler dans la farine", options: ["Cuisiner", "Tromper quelqu'un", "Conduire vite", "Faire du pain"], answer: 1 },
+                { idiom: "Faire un froid de canard", options: ["Chasser des oiseaux", "Faire très froid", "Aller à la piscine", "Cuisiner un canard"], answer: 1 },
+                { idiom: "Avoir un oursin dans le portefeuille", options: ["Aller à la plage", "Être avare", "Acheter des fruits de mer", "Avoir de l'argent"], answer: 1 },
+                { idiom: "Vendre la peau de l'ours avant de l'avoir tué", options: ["Chasser", "Compter sur quelque chose d'incertain", "Vendre des fourrures", "Aller au zoo"], answer: 1 },
+                { idiom: "On ne fait pas d'omelette sans casser des œufs", options: ["Cuisiner", "Il faut accepter des sacrifices", "Aller au marché", "Élever des poules"], answer: 1 },
+                { idiom: "Avoir la chair de poule", options: ["Cuisiner", "Avoir peur ou avoir froid", "Élever des animaux", "Aller chez le boucher"], answer: 1 },
+                { idiom: "Se serrer la ceinture", options: ["S'habiller", "Économiser, dépenser moins", "Faire du sport", "Perdre du poids"], answer: 1 },
+                { idiom: "La goutte d'eau qui fait déborder le vase", options: ["Arroser les plantes", "Le détail qui rend tout insupportable", "Boire de l'eau", "Nettoyer la maison"], answer: 1 },
+                { idiom: "Filer à l'anglaise", options: ["Apprendre une langue", "Partir discrètement sans prévenir", "Voyager en Angleterre", "Boire du thé"], answer: 1 },
+                { idiom: "Appuyer sur le champignon", options: ["Cuisiner", "Accélérer", "Jardiner", "Cueillir des champignons"], answer: 1 },
+                { idiom: "Prendre la mouche", options: ["Attraper un insecte", "Se vexer facilement", "Aller à la pêche", "Nettoyer la maison"], answer: 1 },
+                { idiom: "Se mettre sur son trente-et-un", options: ["Compter", "S'habiller élégamment", "Faire du sport", "Aller au travail"], answer: 1 },
+                { idiom: "Tirer les vers du nez", options: ["Jardiner", "Faire avouer quelque chose", "Aller à la pêche", "Soigner un rhume"], answer: 1 },
+                { idiom: "Mettre son grain de sel", options: ["Cuisiner", "Donner son avis sans qu'on le demande", "Faire les courses", "Assaisonner un plat"], answer: 1 },
+                { idiom: "Jeter l'éponge", options: ["Nettoyer", "Abandonner", "Prendre un bain", "Faire la vaisselle"], answer: 1 },
+                { idiom: "Pisser dans un violon", options: ["Jouer de la musique", "Faire quelque chose d'inutile", "Aller aux toilettes", "Apprendre un instrument"], answer: 1 },
+                { idiom: "Tenir la chandelle", options: ["Éclairer", "Être de trop dans un couple", "Faire le ménage", "Dîner aux chandelles"], answer: 1 }
+            ],
+            zone5: [
+                {
+                    title: "Crise de deadline au bureau",
+                    description: "Votre équipe a raté une échéance importante et votre patron veut une explication.",
+                    question: "Quelle est la meilleure réponse quand votre patron demande ce qui s'est passé ?",
+                    options: [
+                        { text: "On va filer à l'anglaise pour éviter les problèmes.", correct: false },
+                        { text: "Il faut qu'on mette les pieds dans le plat et qu'on assume.", correct: true },
+                        { text: "Les carottes sont cuites, on n'y peut rien.", correct: false },
+                        { text: "On va faire la grasse matinée pour oublier.", correct: false }
+                    ]
+                },
+                {
+                    title: "Entretien d'embauche",
+                    description: "Vous êtes nerveux avant un entretien d'embauche important.",
+                    question: "Comment abordez-vous la situation ?",
+                    options: [
+                        { text: "Je vais me mettre sur mon trente-et-un pour faire bonne impression.", correct: true },
+                        { text: "Je vais poser un lapin au recruteur.", correct: false },
+                        { text: "Je vais tomber dans les pommes de stress.", correct: false },
+                        { text: "Je vais avoir le cafard toute la journée.", correct: false }
+                    ]
+                },
+                {
+                    title: "Achat coûteux imprévu",
+                    description: "Votre voiture a besoin d'une réparation très chère que vous n'aviez pas prévue.",
+                    question: "Comment réagissez-vous face à cette dépense ?",
+                    options: [
+                        { text: "Je vais en faire tout un fromage auprès du garagiste.", correct: false },
+                        { text: "Il va falloir que je me serre la ceinture ce mois-ci.", correct: true },
+                        { text: "Je vais avoir le coup de foudre pour cette facture.", correct: false },
+                        { text: "Je vais faire la pluie et le beau temps.", correct: false }
+                    ]
+                },
+                {
+                    title: "Secret d'un ami",
+                    description: "Votre ami vous a confié un secret important, mais d'autres personnes vous posent des questions.",
+                    question: "Quelle est votre approche ?",
+                    options: [
+                        { text: "Je ne vais pas vendre la mèche, ce n'est pas à moi de le dire.", correct: true },
+                        { text: "Je vais raconter des salades pour éviter le sujet.", correct: false },
+                        { text: "Je vais mettre les pieds dans le plat directement.", correct: false },
+                        { text: "Je vais rouler tout le monde dans la farine.", correct: false }
+                    ]
+                },
+                {
+                    title: "Surcharge de travail",
+                    description: "Vous avez accepté trop de projets et vous n'arrivez plus à tout gérer efficacement.",
+                    question: "Que réalisez-vous sur votre situation ?",
+                    options: [
+                        { text: "J'ai eu les yeux plus gros que le ventre avec tous ces projets.", correct: true },
+                        { text: "C'est les doigts dans le nez, je peux tout faire.", correct: false },
+                        { text: "Je vais casser ma pipe à force de travailler.", correct: false },
+                        { text: "Il faut que je m'occupe de mes oignons seulement.", correct: false }
+                    ]
+                },
+                {
+                    title: "Prise de décision en équipe",
+                    description: "Après une longue discussion, votre équipe attend que vous preniez la décision finale.",
+                    question: "Que reconnaissez-vous ?",
+                    options: [
+                        { text: "Je vais donner ma langue au chat sur ce choix.", correct: false },
+                        { text: "C'est à moi de trancher, je ne peux plus tergiverser.", correct: true },
+                        { text: "Je vais chercher midi à quatorze heures encore.", correct: false },
+                        { text: "Il faut que je raconte des salades pour gagner du temps.", correct: false }
+                    ]
+                },
+                {
+                    title: "Échec d'entreprise",
+                    description: "Votre startup n'a pas fonctionné comme prévu, mais vous avez appris beaucoup et créé de bons contacts.",
+                    question: "Comment voyez-vous cette expérience ?",
+                    options: [
+                        { text: "Je vais avoir le cafard pour cette perte de temps.", correct: false },
+                        { text: "Après la pluie, le beau temps - j'ai beaucoup appris.", correct: true },
+                        { text: "Je vais en faire tout un fromage de cet échec.", correct: false },
+                        { text: "Les carottes sont cuites pour ma carrière.", correct: false }
+                    ]
+                },
+                {
+                    title: "Longue journée de travail",
+                    description: "Vous travaillez depuis 12 heures d'affilée et vous êtes épuisé. Votre collègue suggère de continuer.",
+                    question: "Quelle est votre réponse ?",
+                    options: [
+                        { text: "On va faire la grasse matinée demain pour récupérer.", correct: false },
+                        { text: "Il faut qu'on s'arrête là, on n'est plus efficaces.", correct: true },
+                        { text: "C'est les doigts dans le nez, on peut continuer.", correct: false },
+                        { text: "Il faut qu'on vende la mèche à notre patron.", correct: false }
+                    ]
+                }
+            ]
+        };
+
+        // Initialize game
+        function initGame() {
+            updateDisplay();
+        }
+
+        function updateDisplay() {
+            document.getElementById('totalScore').textContent = gameData.totalScore;
+            document.getElementById('overallProgress').style.width = `${Math.min(gameData.totalScore / 600 * 100, 100)}%`;
+            
+            // Update zone scores
+            for (let i = 0; i < 5; i++) {
+                document.getElementById(`zone${i+1}Score`).textContent = `Score : ${gameData.bestScores[i]}`;
+            }
+            
+            // Update zone locks
+            for (let i = 0; i < 5; i++) {
+                const zoneCard = document.querySelector(`[data-zone="${i+1}"]`);
+                const button = zoneCard.querySelector('button');
+                
+                if (gameData.unlockedZones[i]) {
+                    zoneCard.classList.remove('zone-locked');
+                    zoneCard.querySelectorAll('h3, p, span').forEach(el => {
+                        el.classList.remove('text-gray-400');
+                        if (el.tagName === 'H3') el.classList.add('text-blue-600');
+                        else el.classList.add('text-gray-600');
+                    });
+                    button.className = 'bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-full font-semibold transition-colors';
+                    button.textContent = gameData.bestScores[i] > 0 ? 'Rejouer' : 'Commencer l\'Aventure';
+                    button.onclick = () => startZone(i + 1);
+                }
+            }
+            
+            // Update rank
+            updatePlayerRank();
+        }
+
+        function updatePlayerRank() {
+            const rankElement = document.getElementById('playerRank');
+            if (gameData.totalScore >= 500) {
+                rankElement.textContent = 'Champion des Expressions 🏆';
+            } else if (gameData.totalScore >= 400) {
+                rankElement.textContent = 'Explorateur Fluide 🧭';
+            } else {
+                rankElement.textContent = 'Continuez à Pratiquer 💡';
+            }
+        }
+
+        function startZone(zoneNum) {
+            gameData.currentZone = zoneNum;
+            gameData.currentQuestion = 0;
+            
+            document.getElementById('mainMenu').classList.add('hidden');
+            document.getElementById('gameScreen').classList.remove('hidden');
+            
+            // Hide all game zones
+            for (let i = 1; i <= 5; i++) {
+                document.getElementById(`zone${i}Game`).classList.add('hidden');
+            }
+            
+            // Show current zone
+            document.getElementById(`zone${zoneNum}Game`).classList.remove('hidden');
+            
+            // Set zone title and description
+            const zoneInfo = {
+                1: { title: '🏖️ Match-Up Bay', desc: 'Associez les expressions à leurs significations' },
+                2: { title: '⛰️ Bluff Cliffs', desc: 'Défis Vrai ou Faux' },
+                3: { title: '💎 Treasure Trove', desc: 'Compléter les blancs' },
+                4: { title: '⚡ Lightning Lagoon', desc: 'Quiz rapide' },
+                5: { title: '🌀 The Idiom Maze', desc: 'Défis de scénarios' }
+            };
+            
+            document.getElementById('zoneTitle').textContent = zoneInfo[zoneNum].title;
+            document.getElementById('zoneDescription').textContent = zoneInfo[zoneNum].desc;
+            document.getElementById('currentScore').textContent = '0';
+            
+            // Initialize specific zone
+            switch(zoneNum) {
+                case 1: initZone1(); break;
+                case 2: initZone2(); break;
+                case 3: initZone3(); break;
+                case 4: initZone4(); break;
+                case 5: initZone5(); break;
+            }
+        }
+
+        // Zone 1: Match-Up Bay
+        function initZone1() {
+            const idioms = [...idiomsData.zone1];
+            const meanings = [...idiomsData.zone1.map(item => item.meaning)];
+            
+            // Shuffle meanings
+            for (let i = meanings.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [meanings[i], meanings[j]] = [meanings[j], meanings[i]];
+            }
+            
+            gameData.gameState = { idioms, meanings, matches: {} };
+            
+            renderMatchingGame();
+        }
+
+        function renderMatchingGame() {
+            const idiomsColumn = document.getElementById('idiomsColumn');
+            const meaningsColumn = document.getElementById('meaningsColumn');
+            
+            idiomsColumn.innerHTML = '';
+            meaningsColumn.innerHTML = '';
+            
+            gameData.gameState.idioms.forEach((item, index) => {
+                const idiomDiv = document.createElement('div');
+                idiomDiv.className = 'drag-item bg-blue-100 border-2 border-blue-300 rounded-lg p-3 text-center font-semibold cursor-grab';
+                idiomDiv.draggable = true;
+                idiomDiv.textContent = item.idiom;
+                idiomDiv.dataset.idiom = item.idiom;
+                idiomDiv.addEventListener('dragstart', handleDragStart);
+                idiomsColumn.appendChild(idiomDiv);
+            });
+            
+            gameData.gameState.meanings.forEach((meaning, index) => {
+                const meaningDiv = document.createElement('div');
+                meaningDiv.className = 'drop-zone bg-gray-50 border-2 border-gray-300 rounded-lg p-3 text-center min-h-[60px] flex items-center justify-center';
+                meaningDiv.dataset.meaning = meaning;
+                meaningDiv.textContent = meaning;
+                meaningDiv.addEventListener('dragover', handleDragOver);
+                meaningDiv.addEventListener('drop', handleDrop);
+                meaningsColumn.appendChild(meaningDiv);
+            });
+        }
+
+        function handleDragStart(e) {
+            e.dataTransfer.setData('text/plain', e.target.dataset.idiom);
+        }
+
+        function handleDragOver(e) {
+            e.preventDefault();
+            e.target.classList.add('drag-over');
+        }
+
+        function handleDrop(e) {
+            e.preventDefault();
+            e.target.classList.remove('drag-over');
+            
+            const idiom = e.dataTransfer.getData('text/plain');
+            const meaning = e.target.dataset.meaning;
+            
+            gameData.gameState.matches[idiom] = meaning;
+            
+            // Visual feedback
+            e.target.innerHTML = `<div class="font-semibold text-blue-600">${idiom}</div><div class="text-sm text-gray-600">${meaning}</div>`;
+            e.target.classList.add('bg-blue-50', 'border-blue-400');
+            
+            // Hide the dragged item
+            const draggedItem = document.querySelector(`[data-idiom="${idiom}"]`);
+            if (draggedItem) draggedItem.style.opacity = '0.3';
+            
+            updateMatchProgress();
+        }
+
+        function updateMatchProgress() {
+            const matchCount = Object.keys(gameData.gameState.matches).length;
+            document.getElementById('matchProgress').textContent = `${matchCount}/10`;
+            document.getElementById('matchProgressBar').style.width = `${matchCount * 10}%`;
+        }
+
+        function checkMatches() {
+            let correctMatches = 0;
+            const matches = gameData.gameState.matches;
+            
+            gameData.gameState.idioms.forEach(item => {
+                const dropZone = document.querySelector(`[data-meaning="${matches[item.idiom]}"]`);
+                if (matches[item.idiom] === item.meaning) {
+                    correctMatches++;
+                    if (dropZone) dropZone.classList.add('correct-match');
+                } else if (matches[item.idiom]) {
+                    if (dropZone) dropZone.classList.add('wrong-match');
+                }
+            });
+            
+            const score = correctMatches * 10;
+            
+            // Update scores only if this is better than previous best
+            if (score > gameData.bestScores[0]) {
+                const scoreDiff = score - gameData.bestScores[0];
+                gameData.totalScore += scoreDiff;
+                gameData.bestScores[0] = score;
+            }
+            
+            // Check if zone 2 should be unlocked (80% accuracy)
+            if (correctMatches >= 8) {
+                gameData.unlockedZones[1] = true;
+            }
+            
+            showResults(1, score, correctMatches, 10);
+        }
+
+        // Zone 2: True/False
+        function initZone2() {
+            gameData.gameState = {
+                questions: [...idiomsData.zone2],
+                currentQ: 0,
+                score: 0,
+                lives: 3,
+                correctAnswers: 0
+            };
+            
+            showTrueFalseQuestion();
+        }
+
+        function showTrueFalseQuestion() {
+            const state = gameData.gameState;
+            const question = state.questions[state.currentQ];
+            
+            document.getElementById('tfQuestionNum').textContent = state.currentQ + 1;
+            document.getElementById('livesCount').textContent = state.lives;
+            document.getElementById('tfIdiom').textContent = question.idiom;
+            document.getElementById('tfDefinition').textContent = question.meaning;
+            document.getElementById('tfProgressBar').style.width = `${(state.currentQ + 1) * 10}%`;
+        }
+
+        function answerTrueFalse(userAnswer) {
+            const state = gameData.gameState;
+            const question = state.questions[state.currentQ];
+            const correct = userAnswer === question.correct;
+            
+            if (correct) {
+                state.score += 5;
+                state.correctAnswers++;
+                document.getElementById('currentScore').textContent = state.score;
+            } else {
+                state.lives--;
+                state.score = Math.max(0, state.score - 2);
+                document.getElementById('currentScore').textContent = state.score;
+                
+                if (state.lives <= 0) {
+                    // Reset to start of zone
+                    state.currentQ = 0;
+                    state.lives = 3;
+                    state.score = 0;
+                    showTrueFalseQuestion();
+                    return;
+                }
+            }
+            
+            state.currentQ++;
+            
+            if (state.currentQ >= state.questions.length) {
+                // Zone complete - update best score only if improved
+                if (state.score > gameData.bestScores[1]) {
+                    const scoreDiff = state.score - gameData.bestScores[1];
+                    gameData.totalScore += scoreDiff;
+                    gameData.bestScores[1] = state.score;
+                }
+                gameData.unlockedZones[2] = true; // Unlock zone 3
+                showResults(2, state.score, state.correctAnswers, state.questions.length);
+            } else {
+                setTimeout(showTrueFalseQuestion, 1000);
+            }
+        }
+
+        // Zone 3: Fill in the Blank
+        function initZone3() {
+            gameData.gameState = {
+                questions: [...idiomsData.zone3],
+                currentQ: 0,
+                score: 0,
+                correctAnswers: 0
+            };
+            
+            showFillBlankQuestion();
+        }
+
+        function showFillBlankQuestion() {
+            const state = gameData.gameState;
+            const question = state.questions[state.currentQ];
+            
+            document.getElementById('fibQuestionNum').textContent = state.currentQ + 1;
+            document.getElementById('fibSentence').textContent = question.sentence;
+            document.getElementById('fibProgressBar').style.width = `${(state.currentQ + 1) * 10}%`;
+            
+            // Populate select options
+            const select = document.getElementById('fibSelect');
+            select.innerHTML = '<option value="">Choisir une expression...</option>';
+            question.options.forEach(option => {
+                const optionEl = document.createElement('option');
+                optionEl.value = option;
+                optionEl.textContent = option;
+                select.appendChild(optionEl);
+            });
+            
+            // Clear bonus textarea
+            document.getElementById('bonusSentence').value = '';
+        }
+
+        function submitFillBlank() {
+            const state = gameData.gameState;
+            const question = state.questions[state.currentQ];
+            const userAnswer = document.getElementById('fibSelect').value;
+            
+            if (!userAnswer) {
+                alert('Veuillez d\'abord sélectionner une expression !');
+                return;
+            }
+            
+            const correct = userAnswer === question.answer;
+            
+            if (correct) {
+                state.score += 15;
+                state.correctAnswers++;
+                document.getElementById('currentScore').textContent = state.score;
+            }
+            
+            // Move to next question or finish
+            state.currentQ++;
+            
+            if (state.currentQ >= state.questions.length) {
+                // Update best score only if improved
+                if (state.score > gameData.bestScores[2]) {
+                    const scoreDiff = state.score - gameData.bestScores[2];
+                    gameData.totalScore += scoreDiff;
+                    gameData.bestScores[2] = state.score;
+                }
+                gameData.unlockedZones[3] = true; // Unlock zone 4
+                showResults(3, state.score, state.correctAnswers, state.questions.length);
+            } else {
+                setTimeout(showFillBlankQuestion, 1000);
+            }
+        }
+
+        function submitBonus() {
+            const bonusText = document.getElementById('bonusSentence').value.trim();
+            if (bonusText.length > 10) { // Simple validation
+                gameData.gameState.score += 5;
+                document.getElementById('currentScore').textContent = gameData.gameState.score;
+                alert('Points bonus accordés ! +5 pts');
+                document.getElementById('bonusSentence').value = '';
+            } else {
+                alert('Veuillez écrire une phrase plus longue pour gagner des points bonus !');
+            }
+        }
+
+        // Zone 4: Lightning Round
+        function initZone4() {
+            gameData.gameState = {
+                questions: [...idiomsData.zone4],
+                currentQ: 0,
+                score: 0,
+                timeLeft: 60,
+                correctAnswers: 0,
+                timer: null
+            };
+            
+            startLightningTimer();
+            showLightningQuestion();
+        }
+
+        function startLightningTimer() {
+            const state = gameData.gameState;
+            document.getElementById('timerDisplay').classList.remove('hidden');
+            
+            state.timer = setInterval(() => {
+                state.timeLeft--;
+                const timerEl = document.getElementById('lrTimer');
+                timerEl.textContent = state.timeLeft;
+                
+                if (state.timeLeft <= 10) {
+                    timerEl.classList.add('timer-warning');
+                }
+                
+                if (state.timeLeft <= 0) {
+                    clearInterval(state.timer);
+                    finishLightningRound();
+                }
+            }, 1000);
+        }
+
+        function showLightningQuestion() {
+            const state = gameData.gameState;
+            const question = state.questions[state.currentQ];
+            
+            document.getElementById('lrQuestionNum').textContent = state.currentQ + 1;
+            document.getElementById('lrIdiom').textContent = question.idiom;
+            document.getElementById('lrProgressBar').style.width = `${(state.currentQ + 1) * 5}%`;
+            
+            const optionsContainer = document.getElementById('lrOptions');
+            optionsContainer.innerHTML = '';
+            
+            question.options.forEach((option, index) => {
+                const button = document.createElement('button');
+                button.className = 'bg-yellow-100 hover:bg-yellow-200 border-2 border-yellow-300 rounded-lg p-4 font-semibold transition-colors';
+                button.textContent = option;
+                button.onclick = () => answerLightning(index);
+                optionsContainer.appendChild(button);
+            });
+        }
+
+        function answerLightning(selectedIndex) {
+            const state = gameData.gameState;
+            const question = state.questions[state.currentQ];
+            const correct = selectedIndex === question.answer;
+            
+            if (correct) {
+                state.score += 5 + state.timeLeft; // Base points + time bonus
+                state.correctAnswers++;
+                document.getElementById('currentScore').textContent = state.score;
+            }
+            
+            state.currentQ++;
+            
+            if (state.currentQ >= state.questions.length || state.timeLeft <= 0) {
+                finishLightningRound();
+            } else {
+                showLightningQuestion();
+            }
+        }
+
+        function finishLightningRound() {
+            const state = gameData.gameState;
+            clearInterval(state.timer);
+            document.getElementById('timerDisplay').classList.add('hidden');
+            
+            // Update best score only if improved
+            if (state.score > gameData.bestScores[3]) {
+                const scoreDiff = state.score - gameData.bestScores[3];
+                gameData.totalScore += scoreDiff;
+                gameData.bestScores[3] = state.score;
+            }
+            gameData.unlockedZones[4] = true; // Unlock final zone
+            showResults(4, state.score, state.correctAnswers, Math.min(state.questions.length, 20));
+        }
+
+        // Zone 5: Scenario Game
+        function initZone5() {
+            gameData.gameState = {
+                scenarios: [...idiomsData.zone5],
+                currentS: 0,
+                score: 0,
+                correctAnswers: 0
+            };
+            
+            showScenario();
+        }
+
+        function showScenario() {
+            const state = gameData.gameState;
+            const scenario = state.scenarios[state.currentS];
+            
+            document.getElementById('scenarioNum').textContent = state.currentS + 1;
+            document.getElementById('scenarioTitle').textContent = scenario.title;
+            document.getElementById('scenarioDescription').textContent = scenario.description;
+            document.getElementById('scenarioQuestion').textContent = scenario.question;
+            document.getElementById('scenarioProgressBar').style.width = `${(state.currentS + 1) * 12.5}%`;
+            
+            const optionsContainer = document.getElementById('scenarioOptions');
+            optionsContainer.innerHTML = '';
+            
+            scenario.options.forEach((option, index) => {
+                const button = document.createElement('button');
+                button.className = 'bg-purple-100 hover:bg-purple-200 border-2 border-purple-300 rounded-lg p-4 text-left transition-colors w-full';
+                button.innerHTML = `<div class="font-semibold">${option.text}</div>`;
+                button.onclick = () => answerScenario(index);
+                optionsContainer.appendChild(button);
+            });
+        }
+
+        function answerScenario(selectedIndex) {
+            const state = gameData.gameState;
+            const scenario = state.scenarios[state.currentS];
+            const correct = scenario.options[selectedIndex].correct;
+            
+            if (correct) {
+                state.score += 20;
+                state.correctAnswers++;
+                document.getElementById('currentScore').textContent = state.score;
+            }
+            
+            state.currentS++;
+            
+            if (state.currentS >= state.scenarios.length) {
+                // Update best score only if improved
+                if (state.score > gameData.bestScores[4]) {
+                    const scoreDiff = state.score - gameData.bestScores[4];
+                    gameData.totalScore += scoreDiff;
+                    gameData.bestScores[4] = state.score;
+                }
+                showResults(5, state.score, state.correctAnswers, state.scenarios.length);
+            } else {
+                setTimeout(showScenario, 1500);
+            }
+        }
+
+        // Results and Navigation
+        function showResults(zone, score, correct, total) {
+            const modal = document.getElementById('resultsModal');
+            const icon = document.getElementById('resultsIcon');
+            const title = document.getElementById('resultsTitle');
+            const message = document.getElementById('resultsMessage');
+            const scoreDisplay = document.getElementById('resultsScore');
+            
+            const percentage = Math.round((correct / total) * 100);
+            
+            if (percentage >= 80) {
+                icon.textContent = '🎉';
+                title.textContent = 'Excellent Travail !';
+                message.textContent = `Vous avez maîtrisé cette zone avec ${percentage}% de réussite !`;
+            } else if (percentage >= 60) {
+                icon.textContent = '👍';
+                title.textContent = 'Bon Travail !';
+                message.textContent = `Vous avez obtenu ${percentage}% de bonnes réponses. Continuez à pratiquer !`;
+            } else {
+                icon.textContent = '💪';
+                title.textContent = 'Continuez à Essayer !';
+                message.textContent = `Vous avez obtenu ${percentage}% de bonnes réponses. C'est en forgeant qu'on devient forgeron !`;
+            }
+            
+            scoreDisplay.textContent = `${score} points`;
+            modal.classList.remove('hidden');
+        }
+
+        function closeResults() {
+            document.getElementById('resultsModal').classList.add('hidden');
+            returnToMenu();
+        }
+
+        function returnToMenu() {
+            document.getElementById('gameScreen').classList.add('hidden');
+            document.getElementById('mainMenu').classList.remove('hidden');
+            updateDisplay();
+        }
+
+        // Initialize the game when page loads
+        initGame();
+    </script>
+</body>
+</html>

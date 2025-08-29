@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>🌴 Idiom Insel Abenteuer</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Fredoka+One:wght@400&family=Inter:wght@400;500;600;700&display=swap');
+    .game-font { font-family: 'Fredoka One', cursive; }
+    .body-font { font-family: 'Inter', sans-serif; }
+    .island-bg { background: linear-gradient(135deg,#667eea 0%,#764ba2 100%); min-height:100vh; }
+    .zone-card { transition:.3s; }
+    .zone-card:hover { transform: translateY(-5px); box-shadow:0 20px 40px rgba(0,0,0,0.1); }
+    .zone-locked { opacity:0.6; filter:grayscale(100%); }
+    .progress-bar { transition:width .5s; }
+    .drag-item { cursor:grab; transition:.2s; }
+    .drag-item:hover { transform:scale(1.05); }
+    .drop-zone { min-height:60px; transition:.2s; }
+    .drop-zone.drag-over { background:#e0f2fe; border-color:#0284c7; }
+    .correct-match { background:#dcfce7!important; border-color:#16a34a!important; }
+    .wrong-match   { background:#fef2f2!important; border-color:#dc2626!important; }
+    @keyframes pulse {0%,100%{opacity:1}50%{opacity:.5}}
+    .timer-warning { animation:pulse 1s infinite; }
+  </style>
+</head>
+<body class="island-bg body-font text-gray-800">
+  <div id="app" class="min-h-screen">
+    <!-- Hauptmenü -->
+    <div id="mainMenu" class="container mx-auto px-4 py-8">
+      <div class="text-center mb-12">
+        <h1 class="game-font text-6xl text-white mb-4">🏝️ Idiom Insel Abenteuer</h1>
+        <p class="text-xl text-blue-100 mb-8">Beherrsche 50 deutsche Redewendungen durch spannende Insel-Challenges!</p>
+        <div class="bg-white/20 backdrop-blur-sm rounded-2xl p-6 max-w-md mx-auto mb-8">
+          <div class="flex justify-between items-center mb-4">
+            <span class="text-white font-semibold">Gesamtpunktzahl:</span>
+            <span id="totalScore" class="text-2xl font-bold text-yellow-300">0</span>
+          </div>
+          <div class="w-full bg-white/20 rounded-full h-3">
+            <div id="overallProgress" class="progress-bar bg-gradient-to-r from-yellow-400 to-orange-500 h-3 rounded-full" style="width:0%"></div>
+          </div>
+          <p class="text-blue-100 text-sm mt-2">Fortschritt zum Idiom-Meister</p>
+        </div>
+      </div>
+      <!-- Zonen-Auswahl -->
+      <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
+        <!-- Zone 1 -->
+        <div class="zone-card bg-white rounded-2xl p-6 shadow-xl" data-zone="1">
+          <div class="text-center">
+            <div class="text-4xl mb-4">🏖️</div>
+            <h3 class="game-font text-2xl text-blue-600 mb-2">Zuordnungsbucht</h3>
+            <p class="text-gray-600 mb-4">Redewendungen zuordnen</p>
+            <div class="flex justify-between text-sm text-gray-500 mb-4">
+              <span>Max: 100 Pkt.</span>
+              <span id="zone1Score">Punkte: 0</span>
+            </div>
+            <button onclick="startZone(1)" class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-full font-semibold">Starten</button>
+          </div>
+        </div>
+        <!-- Zone 2 -->
+        <div class="zone-card bg-white rounded-2xl p-6 shadow-xl zone-locked" data-zone="2">
+          <div class="text-center">
+            <div class="text-4xl mb-4">⛰️</div>
+            <h3 class="game-font text-2xl text-gray-400 mb-2">Bluff-Klippen</h3>
+            <p class="text-gray-400 mb-4">Richtig oder Falsch?</p>
+            <div class="flex justify-between text-sm text-gray-400 mb-4">
+              <span>Max: 100 Pkt.</span>
+              <span id="zone2Score">Punkte: 0</span>
+            </div>
+            <button class="bg-gray-300 text-gray-500 px-6 py-2 rounded-full cursor-not-allowed">🔒 Gesperrt</button>
+          </div>
+        </div>
+        <!-- Zone 3 -->
+        <div class="zone-card bg-white rounded-2xl p-6 shadow-xl zone-locked" data-zone="3">
+          <div class="text-center">
+            <div class="text-4xl mb-4">💎</div>
+            <h3 class="game-font text-2xl text-gray-400 mb-2">Schatztruhe</h3>
+            <p class="text-gray-400 mb-4">Satzlücken füllen</p>
+            <div class="flex justify-between text-sm text-gray-400 mb-4">
+              <span>Max: 150 Pkt.</span>
+              <span id="zone3Score">Punkte: 0</span>
+            </div>
+            <button class="bg-gray-300 text-gray-500 px-6 py-2 rounded-full cursor-not-allowed">🔒 Gesperrt</button>
+          </div>
+        </div>
+        <!-- Zone 4 -->
+        <div class="zone-card bg-white rounded-2xl p-6 shadow-xl zone-locked" data-zone="4">
+          <div class="text-center">
+            <div class="text-4xl mb-4">⚡</div>
+            <h3 class="game-font text-2xl text-gray-400 mb-2">Blitz-Lagune</h3>
+            <p class="text-gray-400 mb-4">Schnellquiz</p>
+            <div class="flex justify-between text-sm text-gray-400 mb-4">
+              <span>Max: 100 Pkt.</span>
+              <span id="zone4Score">Punkte: 0</span>
+            </div>
+            <button class="bg-gray-300 text-gray-500 px-6 py-2 rounded-full cursor-not-allowed">🔒 Gesperrt</button>
+          </div>
+        </div>
+        <!-- Zone 5 -->
+        <div class="zone-card bg-white rounded-2xl p-6 shadow-xl zone-locked" data-zone="5">
+          <div class="text-center">
+            <div class="text-4xl mb-4">🌀</div>
+            <h3 class="game-font text-2xl text-gray-400 mb-2">Das Redewendungs-Labyrinth</h3>
+            <p class="text-gray-400 mb-4">Szenario-Challenges</p>
+            <div class="flex justify-between text-sm text-gray-400 mb-4">
+              <span>Max: 150 Pkt.</span>
+              <span id="zone5Score">Punkte: 0</span>
+            </div>
+            <button class="bg-gray-300 text-gray-500 px-6 py-2 rounded-full cursor-not-allowed">🔒 Gesperrt</button>
+          </div>
+        </div>
+        <!-- Dein Rang -->
+        <div class="zone-card bg-gradient-to-br from-yellow-400 to-orange-500 rounded-2xl p-6 shadow-xl">
+          <div class="text-center text-white">
+            <div class="text-4xl mb-4">🏆</div>
+            <h3 class="game-font text-2xl mb-2">Dein Rang</h3>
+            <p id="playerRank" class="text-lg font-semibold mb-2">Weiter üben</p>
+            <div class="text-sm opacity-90">
+              <div>🏆 500+ Pkt.: Champion</div>
+              <div>🧭 400+ Pkt.: Entdecker</div>
+              <div>💡 0+ Pkt.: Weiter üben</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Spiel-Screen (unverändert visuell, nur Texte in Deutsch) -->
+    <div id="gameScreen" class="hidden container mx-auto px-4 py-8">
+      <div class="bg-white/20 backdrop-blur-sm rounded-2xl p-4 mb-6 flex justify-between items-center">
+        <button onclick="returnToMenu()" class="bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-lg">← Zurück</button>
+        <div class="text-center">
+          <h2 id="zoneTitle" class="game-font text-2xl text-white"></h2>
+          <p id="zoneDescription" class="text-blue-100"></p>
+        </div>
+        <div class="text-right">
+          <div class="text-white font-semibold">Punkte: <span id="currentScore">0</span></div>
+          <div id="timerDisplay" class="text-yellow-300 font-bold hidden"></div>
+        </div>
+      </div>
+      <!-- Zone-1 Drag&Drop -->
+      <div id="zone1Game" class="hidden bg-white rounded-2xl p-6 shadow-xl">
+        <div class="mb-6">
+          <div class="flex justify-between items-center mb-2">
+            <span class="font-semibold">Fortschritt</span>
+            <span id="matchProgress">0/10</span>
+          </div>
+          <div class="w-full bg-gray-200 rounded-full h-3">
+            <div id="matchProgressBar" class="progress-bar bg-blue-500 h-3 rounded-full" style="width:0%"></div>
+          </div>
+        </div>
+        <div class="grid md:grid-cols-2 gap-8">
+          <div>
+            <h3 class="font-bold text-lg text-center mb-4">Redewendungen</h3>
+            <div id="idiomsColumn" class="space-y-3"></div>
+          </div>
+          <div>
+            <h3 class="font-bold text-lg text-center mb-4">Bedeutungen</h3>
+            <div id="meaningsColumn" class="space-y-3"></div>
+          </div>
+        </div>
+        <div class="text-center mt-6">
+          <button id="checkMatches" onclick="checkMatches()" class="bg-green-500 hover:bg-green-600 text-white px-8 py-3 rounded-full font-semibold">Antwort prüfen</button>
+        </div>
+      </div>
+      <!-- Zone-2 Richtig/Falsch -->
+      <div id="zone2Game" class="hidden bg-white rounded-2xl p-6 shadow-xl max-w-2xl mx-auto">
+        <div class="mb-6">
+          <div class="flex justify-between items-center mb-2">
+            <span class="font-semibold">Frage <span id="tfQuestionNum">1</span>/10</span>
+            <span class="text-red-500 font-semibold">Leben: <span id="livesCount">3</span> ❤️</span>
+          </div>
+          <div class="w-full bg-gray-200 rounded-full h-3">
+            <div id="tfProgressBar" class="progress-bar bg-purple-500 h-3 rounded-full" style="width:10%"></div>
+          </div>
+        </div>
+        <div class="text-center mb-8">
+          <div class="bg-blue-50 rounded-xl p-6 mb-6">
+            <h3 id="tfIdiom" class="text-2xl font-bold text-blue-600 mb-4"></h3>
+            <p id="tfDefinition" class="text-lg text-gray-700"></p>
+          </div>
+          <div class="space-x-4">
+            <button onclick="answerTrueFalse(true)" class="bg-green-500 hover:bg-green-600 text-white px-8 py-4 rounded-full font-bold text-xl">✓ RICHTIG</button>
+            <button onclick="answerTrueFalse(false)" class="bg-red-500 hover:bg-red-600 text-white px-8 py-4 rounded-full font-bold text-xl">✗ FALSCH</button>
+          </div>
+        </div>
+      </div>
+      <!-- Zone-3 Lückentext -->
+      <div id="zone3Game" class="hidden bg-white rounded-2xl p-6 shadow-xl max-w-2xl mx-auto">
+        <div class="mb-6">
+          <div class="flex justify-between items-center mb-2">
+            <span class="font-semibold">Frage <span id="fibQuestionNum">1</span>/10</span>
+            <span class="font-semibold">Bonus verfügbar! 📝</span>
+          </div>
+          <div class="w-full bg-gray-200 rounded-full h-3">
+            <div id="fibProgressBar" class="progress-bar bg-green-500 h-3 rounded-full" style="width:10%"></div>
+          </div>
+        </div>
+        <div class="text-center mb-8">
+          <div class="bg-green-50 rounded-xl p-6 mb-6">
+            <p id="fibSentence" class="text-lg text-gray-700 mb-4"></p>
+            <select id="fibSelect" class="border-2 border-green-300 rounded-lg px-4 py-2 text-lg bg-white">
+              <option value="">Redewendung wählen…</option>
+            </select>
+          </div>
+          <button onclick="submitFillBlank()" class="bg-green-500 hover:bg-green-600 text-white px-8 py-3 rounded-full font-semibold mb-4">Antwort absenden</button>
+          <div class="border-t pt-4">
+            <p class="text-sm text-gray-600 mb-2">Bonus: Eigenen Satz erstellen</p>
+            <textarea id="bonusSentence" class="w-full border-2 border-gray-300 rounded-lg p-3 text-sm" placeholder="Eigenen Satz mit der Redewendung schreiben…"></textarea>
+            <button onclick="submitBonus()" class="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-lg font-semibold mt-2">Bonus absenden (+5 Pkt.)</button>
+          </div>
+        </div>
+      </div>
+      <!-- Zone-4 Schnellquiz -->
+      <div id="zone4Game" class="hidden bg-white rounded-2xl p-6 shadow-xl max-w-2xl mx-auto">
+        <div class="mb-6">
+          <div class="flex justify-between items-center mb-2">
+            <span class="font-semibold">Frage <span id="lrQuestionNum">1</span>/20</span>
+            <span id="lrTimer" class="text-2xl font-bold text-red-500">60</span>
+          </div>
+          <div class="w-full bg-gray-200 rounded-full h-3">
+            <div id="lrProgressBar" class="progress-bar bg-yellow-500 h-3 rounded-full" style="width:5%"></div>
+          </div>
+        </div>
+        <div class="text-center mb-8">
+          <div class="bg-yellow-50 rounded-xl p-6 mb-6">
+            <h3 id="lrIdiom" class="text-2xl font-bold text-yellow-600 mb-4"></h3>
+          </div>
+          <div id="lrOptions" class="grid grid-cols-2 gap-4"></div>
+        </div>
+      </div>
+      <!-- Zone-5 Szenario -->
+      <div id="zone5Game" class="hidden bg-white rounded-2xl p-6 shadow-xl max-w-3xl mx-auto">
+        <div class="mb-6">
+          <div class="flex justify-between items-center mb-2">
+            <span class="font-semibold">Szenario <span id="scenarioNum">1</span>/8</span>
+            <span class="font-semibold">Finale Herausforderung! 🌟</span>
+          </div>
+          <div class="w-full bg-gray-200 rounded-full h-3">
+            <div id="scenarioProgressBar" class="progress-bar bg-purple-500 h-3 rounded-full" style="width:12.5%"></div>
+          </div>
+        </div>
+        <div class="mb-8">
+          <div class="bg-purple-50 rounded-xl p-6 mb-6">
+            <h3 id="scenarioTitle" class="text-xl font-bold text-purple-600 mb-4"></h3>
+            <p id="scenarioDescription" class="text-gray-700 mb-4"></p>
+            <p id="scenarioQuestion" class="font-semibold text-gray-800"></p>
+          </div>
+          <div id="scenarioOptions" class="space-y-3"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Ergebnismodal -->
+    <div id="resultsModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div class="bg-white rounded-2xl p-8 max-w-md mx-4 text-center">
+        <div id="resultsIcon" class="text-6xl mb-4"></div>
+        <h3 id="resultsTitle" class="game-font text-2xl mb-4"></h3>
+        <p id="resultsMessage" class="text-gray-600 mb-6"></p>
+        <div id="resultsScore" class="text-3xl font-bold text-blue-600 mb-6"></div>
+        <button onclick="closeResults()" class="bg-blue-500 hover:bg-blue-600 text-white px-8 py-3 rounded-full font-semibold">Weiter</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const gameData = {
+      totalScore:0, zoneScores:[0,0,0,0,0],
+      unlockedZones:[true,false,false,false,false],
+      currentZone:0, gameState:{}
+    };
+
+    const idiomsData = {
+      zone1:[
+        {idiom:"Die Daumen drücken",meaning:"Glück wünschen"},
+        {idiom:"Einen Kater haben",meaning:"verkatert sein"},
+        {idiom:"Das ist mir Wurst",meaning:"Das ist mir egal"},
+        {idiom:"Fix und fertig sein",meaning:"völlig erschöpft sein"},
+        {idiom:"Lügen haben kurze Beine",meaning:"Lügen werden schnell aufgedeckt"},
+        {idiom:"Seinen Senf dazugeben",meaning:"seine Meinung äußern"},
+        {idiom:"Schwein haben",meaning:"Glück haben"},
+        {idiom:"Mist!",meaning:"Ach, verdammt!"},
+        {idiom:"Blaumachen",meaning:"nicht zur Arbeit/Schule gehen"},
+        {idiom:"Jemandem auf den Keks gehen",meaning:"jemanden nerven"}
+      ],
+      zone2:[
+        {idiom:"Um den heißen Brei herumreden",meaning:"nicht direkt sprechen",correct:true},
+        {idiom:"Zwei Fliegen mit einer Klappe schlagen",meaning:"zwei Dinge gleichzeitig erledigen",correct:true},
+        {idiom:"Tomaten auf den Augen haben",meaning:"etwas Offensichtliches nicht sehen",correct:false},
+        {idiom:"Der frühe Vogel fängt den Wurm",meaning:"wer früh aufsteht, hat Vorteile",correct:true},
+        {idiom:"Einen Vogel haben",meaning:"verrückt sein",correct:false},
+        {idiom:"Auf Wolke sieben schweben",meaning:"verliebt und glücklich sein",correct:true},
+        {idiom:"Ein Auge zudrücken",meaning:"nachsichtig sein",correct:false},
+        {idiom:"Den Nagel auf den Kopf treffen",meaning:"etwas genau richtig sagen",correct:true},
+        {idiom:"Wie Kraut und Rüben",meaning:"durcheinander und unordentlich",correct:false},
+        {idiom:"Alles in Butter",meaning:"alles in Ordnung",correct:true}
+      ],
+      zone3:[
+        {sentence:"Wir müssen ______ und die Konsequenzen tragen.",answer:"den Kopf hinhalten",options:["den Kopf hinhalten","die Daumen drücken","Schwein haben","blaumachen"]},
+        {sentence:"Vergiss nicht, ______, bevor du morgen die Prüfung schreibst!",answer:"früh ins Bett zu gehen",options:["früh ins Bett zu gehen","einen Kater zu haben","blaumachen","Senf dazuzugeben"]},
+        {sentence:"Diese neue Software ______ – sie ist sehr teuer.",answer:"kostet ein Vermögen",options:["kostet ein Vermögen","ist mir Wurst","geht mir auf den Keks","macht blau"]},
+        {sentence:"Lass uns ______ und morgen weitermachen.",answer:"Feierabend machen",options:["Feierabend machen","Schwein haben","Senf dazuzugeben","die Daumen drücken"]},
+        {sentence:"Sag es direkt und ______ nicht!",answer:"rede nicht um den heißen Brei herum",options:["rede nicht um den heißen Brei herum","drück die Daumen","einen Kater haben","blaumachen"]},
+        {sentence:"Die Kündigung war ______ – jetzt habe ich einen besseren Job.",answer:"ein Segen im Unglück",options:["ein Segen im Unglück","mir Wurst","zum Kater werden","blaumachen"]},
+        {sentence:"Ich glaube, ich ______ mit diesem Projekt.",answer:"habe zu viel auf einmal genommen",options:["habe zu viel auf einmal genommen","drücke die Daumen","einen Kater haben","blaumachen"]},
+        {sentence:"______ – wenigstens bist du gekommen!",answer:"Besser spät als nie",options:["Besser spät als nie","die Daumen drücken","Schwein haben","blaumachen"]},
+        {sentence:"Jetzt liegt ______ – du musst entscheiden.",answer:"der Ball bei dir",options:["der Ball bei dir","ein Kater vor","blaumachen","Senf dazuzugeben"]},
+        {sentence:"Hör auf zu ______ – es ist vorbei.",answer:"über Vergangenes zu jammern",options:["über Vergangenes zu jammern","Die Daumen drücken","Senf dazuzugeben","blaumachen"]}
+      ],
+      zone4:[
+        {idiom:"Den Kopf hinhalten",options:["Verantwortung übernehmen","Schnell essen","Einen Hut aufsetzen","Sehr müde sein"],answer:0},
+        {idiom:"Die Daumen drücken",options:["Glück wünschen","Hände verformen","Luft anhalten","Seifenblasen machen"],answer:0},
+        {idiom:"Früh ins Bett gehen",options:["Zeitig schlafen","Schnell rennen","Tee trinken","Buch lesen"],answer:0},
+        {idiom:"Zwei Fliegen mit einer Klappe schlagen",options:["zwei Dinge gleichzeitig erledigen","Fliegen töten","Lärm machen","Vögel beobachten"],answer:0},
+        {idiom:"Alles in Butter",options:["alles in Ordnung","Butter essen","Glätten","Schleifen"],answer:0},
+        {idiom:"Auf Wolke sieben schweben",options:["verliebt und glücklich sein","Fliegen lernen","Wolken erforschen","Traum sehen"],answer:0},
+        {idiom:"Blaumachen",options:["nicht zur Arbeit gehen","Bälle malen","Farbe nehmen","Meerblick genießen"],answer:0},
+        {idiom:"Tomaten auf den Augen haben",options:["etwas Offensichtliches nicht sehen","Gemüse essen","Augen tränen","Kochen können"],answer:0},
+        {idiom:"Ein Auge zudrücken",options:["nachsichtig sein","Blinzeln","Schlafen","Aufpassen"],answer:0},
+        {idiom:"Wie Kraut und Rüben",options:["durcheinander und unordentlich","Gemüse essen","Salat machen","Rüben ernten"],answer:0},
+        {idiom:"Lügen haben kurze Beine",options:["Lügen werden schnell aufgedeckt","Laufen üben","Knie beugen","Beine messen"],answer:0},
+        {idiom:"Seinen Senf dazugeben",options:["seine Meinung äußern","Senf essen","Würze streuen","Mustern"],answer:0},
+        {idiom:"Schwein haben",options:["Glück haben","Ferkel füttern","Fleisch essen","Joggen"],answer:0},
+        {idiom:"Einen Kater haben",options:["verkatert sein","Katze streicheln","Frühstück machen","Tee trinken"],answer:0},
+        {idiom:"Mist!",options:["Ach, verdammt!","Mist sammeln","Farm besuchen","Laub fegen"],answer:0},
+        {idiom:"Den Nagel auf den Kopf treffen",options:["etwas genau richtig sagen","Nägel lackieren","Kopf treffen","Baum fällen"],answer:0},
+        {idiom:"Jemandem auf den Keks gehen",options:["jemanden nerven","Kekse backen","Kaffee trinken","Müde sein"],answer:0},
+        {idiom:"Fix und fertig sein",options:["völlig erschöpft sein","Schnell laufen","Fertig sein","Essen gehen"],answer:0},
+        {idiom:"Mist bauen",options:["einen Fehler machen","Müll produzieren","Scheiße reden","Bauen"],answer:0},
+        {idiom:"Besser spät als nie",options:["besser spät als nie","früh sein","Zeitmanagement","Warten"],answer:0}
+      ],
+      zone5:[
+        {
+          title:"Büro-Deadline-Krise",
+          description:"Ihr Team hat einen wichtigen Termin verpasst und der Chef ist verärgert.",
+          question:"Wie reagieren Sie am besten?",
+          options:[
+            {text:"Lass uns einfach blaumachen und abwarten.",idiom:"Blaumachen",correct:false},
+            {text:"Wir müssen den Kopf hinhalten und Verantwortung übernehmen.",idiom:"Den Kopf hinhalten",correct:true},
+            {text:"Ich drücke uns allen die Daumen, dass es gut ausgeht.",idiom:"Die Daumen drücken",correct:false},
+            {text:"Das ist mir Wurst, Fehler passieren eben.",idiom:"Das ist mir Wurst",correct:false}
+          ]
+        },
+        {
+          title:"Vorstellungsgespräch",
+          description:"Sie sind nervös im Gespräch mit einem strengen Interviewer.",
+          question:"Wie brechen Sie das Eis?",
+          options:[
+            {text:"Ich sollte nicht um den heißen Brei herumreden.",idiom:"Um den heißen Brei herumreden",correct:true},
+            {text:"Ich mache lieber blau, um mich zu beruhigen.",idiom:"Blaumachen",correct:false},
+            {text:"Ich gebe meinen Senf dazu und eskaliere.",idiom:"Seinen Senf dazugeben",correct:false},
+            {text:"Ich habe einen Kater und kann nicht klar denken.",idiom:"Einen Kater haben",correct:false}
+          ]
+        },
+        {
+          title:"Teure Anschaffung",
+          description:"Sie überlegen, ein sehr teures Auto zu kaufen.",
+          question:"Was sagen Sie sich?",
+          options:[
+            {text:"Das kostet ein Vermögen – ich sollte es mir gut überlegen.",idiom:"kostet ein Vermögen",correct:true},
+            {text:"Besser spät als nie, ich kaufe es jetzt.",idiom:"Besser spät als nie",correct:false},
+            {text:"Das ist mir Wurst, ich kaufe einfach.",idiom:"Das ist mir Wurst",correct:false},
+            {text:"Ich breche mir ein Bein und fahre los.",idiom:"Break a leg",correct:false}
+          ]
+        },
+        {
+          title:"Geheimnis des Freundes",
+          description:"Ein Freund hat Ihnen ein Geheimnis anvertraut.",
+          question:"Wie verhalten Sie sich?",
+          options:[
+            {text:"Ich verrate es nicht – Lügen haben kurze Beine.",idiom:"Lügen haben kurze Beine",correct:true},
+            {text:"Ich muss den Senf dazugeben und fragen.",idiom:"Seinen Senf dazugeben",correct:false},
+            {text:"Ich spreche mit allen darüber.",idiom:"Blaumachen",correct:false},
+            {text:"Ich hebe mir das als Segen im Unglück auf.",idiom:"Ein Segen im Unglück",correct:false}
+          ]
+        },
+        {
+          title:"Überforderung im Projekt",
+          description:"Sie haben zu viele Aufgaben übernommen.",
+          question:"Was erkennen Sie?",
+          options:[
+            {text:"Ich habe zu viel auf einmal genommen.",idiom:"habe zu viel auf einmal genommen",correct:true},
+            {text:"Das ist ein Kinderspiel für mich.",idiom:"Piece of cake",correct:false},
+            {text:"Ich gehe jetzt schlafen – Blaumachen.",idiom:"Blaumachen",correct:false},
+            {text:"Ich muss den Nagel auf den Kopf treffen.",idiom:"Den Nagel auf den Kopf treffen",correct:false}
+          ]
+        },
+        {
+          title:"Team-Entscheidung",
+          description:"Ihr Team wartet auf Ihre finale Entscheidung.",
+          question:"Was sagen Sie?",
+          options:[
+            {text:"Der Ball ist bei mir – ich entscheide jetzt.",idiom:"Der Ball ist bei dir",correct:true},
+            {text:"Ich mache blau und warte ab.",idiom:"Blaumachen",correct:false},
+            {text:"Ich rede nicht um den heißen Brei herum.",idiom:"Um den heißen Brei herumreden",correct:false},
+            {text:"Es war ein Segen im Unglück.",idiom:"Ein Segen im Unglück",correct:false}
+          ]
+        },
+        {
+          title:"Gescheiterter Start-up",
+          description:"Ihr Unternehmen schlug fehl, Sie haben trotzdem gelernt.",
+          question:"Wie sehen Sie das?",
+          
+          options:[
+            {text:"Ich bereue es nicht – es war ein Segen im Unglück.",idiom:"Ein Segen im Unglück",correct:true},
+            {text:"Ich heule dem verschütteten Milch nach.",idiom:"Cry over spilled milk",correct:false},
+            {text:"Ich stehe meinen Mann und face the music.",idiom:"Den Kopf hinhalten",correct:false},
+            {text:"Das hat ein Vermögen gekostet.",idiom:"kostet ein Vermögen",correct:false}
+          ]
+        },
+        {
+          title:"Langer Arbeitstag",
+          description:"Nach 12 Stunden Arbeit sind Sie erschöpft.",
+          question:"Was empfehlen Sie?",
+          options:[
+            {text:"Wir sollten Feierabend machen.",idiom:"Feierabend machen",correct:true},
+            {text:"Noch eine Runde Blaumachen.",idiom:"Blaumachen",correct:false},
+            {text:"Ein Kinderspiel für uns.",idiom:"Piece of cake",correct:false},
+            {text:"Ich drücke uns allen die Daumen.",idiom:"Die Daumen drücken",correct:false}
+          ]
+        }
+      ]
+    };
+
+    function initGame(){updateDisplay();}
+    function updateDisplay(){
+      document.getElementById('totalScore').textContent=gameData.totalScore;
+      document.getElementById('overallProgress').style.width=`${Math.min(gameData.totalScore/600*100,100)}%`;
+      for(let i=0;i<5;i++){
+        document.getElementById(`zone${i+1}Score`).textContent=`Punkte: ${gameData.zoneScores[i]}`;
+        const card=document.querySelector(`[data-zone="${i+1}"]`),btn=card.querySelector('button');
+        if(gameData.unlockedZones[i]){
+          card.classList.remove('zone-locked');
+          btn.className='bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-full font-semibold';
+          btn.textContent=gameData.zoneScores[i]>0?'Nochmal spielen':'Starten';
+          btn.onclick=()=>startZone(i+1);
+        }
+      }
+      const rankEl=document.getElementById('playerRank');
+      if(gameData.totalScore>=500) rankEl.textContent='Champion 🏆';
+      else if(gameData.totalScore>=400) rankEl.textContent='Entdecker 🧭';
+      else rankEl.textContent='Weiter üben 💡';
+    }
+
+    function startZone(z){
+      gameData.currentZone=z;
+      document.getElementById('mainMenu').classList.add('hidden');
+      document.getElementById('gameScreen').classList.remove('hidden');
+      for(let i=1;i<=5;i++) document.getElementById(`zone${i}Game`).classList.add('hidden');
+      document.getElementById(`zone${z}Game`).classList.remove('hidden');
+      const info={
+        1:{title:'🏖️ Zuordnungsbucht',desc:'Redewendungen zuordnen'},
+        2:{title:'⛰️ Bluff-Klippen',desc:'Richtig oder Falsch?'},
+        3:{title:'💎 Schatztruhe',desc:'Satzlücken füllen'},
+        4:{title:'⚡ Blitz-Lagune',desc:'Schnellquiz'},
+        5:{title:'🌀 Das Redewendungs-Labyrinth',desc:'Szenario-Challenges'}
+      };
+      document.getElementById('zoneTitle').textContent=info[z].title;
+      document.getElementById('zoneDescription').textContent=info[z].desc;
+      document.getElementById('currentScore').textContent='0';
+      if(z===1) initZone1();
+      if(z===2) initZone2();
+      if(z===3) initZone3();
+      if(z===4) initZone4();
+      if(z===5) initZone5();
+    }
+
+    // ZONE1 Drag&Drop
+    function initZone1(){
+      const idioms=[...idiomsData.zone1],meanings=[...idioms.map(x=>x.meaning)];
+      for(let i=meanings.length-1;i>0;i--){
+        const j=Math.floor(Math.random()*(i+1));
+        [meanings[i],meanings[j]]=[meanings[j],meanings[i]];
+      }
+      gameData.gameState={idioms,meanings,matches:{}};
+      renderMatching();
+    }
+    function renderMatching(){
+      const col1=document.getElementById('idiomsColumn'),col2=document.getElementById('meaningsColumn');
+      col1.innerHTML='';col2.innerHTML='';
+      gameData.gameState.idioms.forEach(item=>{
+        const d=document.createElement('div');
+        d.className='drag-item bg-blue-100 border-2 border-blue-300 rounded-lg p-3 text-center font-semibold';
+        d.draggable=true;d.textContent=item.idiom;d.dataset.idiom=item.idiom;
+        d.addEventListener('dragstart',e=>e.dataTransfer.setData('text',e.target.dataset.idiom));
+        col1.appendChild(d);
+      });
+      gameData.gameState.meanings.forEach(m=>{
+        const d=document.createElement('div');
+        d.className='drop-zone bg-gray-50 border-2 border-gray-300 rounded-lg p-3 text-center flex items-center justify-center';
+        d.dataset.meaning=m;d.textContent=m;
+        d.addEventListener('dragover',e=>{e.preventDefault();d.classList.add('drag-over');});
+        d.addEventListener('drop',e=>{
+          e.preventDefault();d.classList.remove('drag-over');
+          const idiom=e.dataTransfer.getData('text');
+          gameData.gameState.matches[idiom]=m;
+          d.innerHTML=`<div class="font-semibold text-blue-600">${idiom}</div><div class="text-sm text-gray-600">${m}</div>`;
+          d.classList.add('bg-blue-50','border-blue-400');
+          document.querySelector(`[data-idiom="${idiom}"]`).style.opacity='0.3';
+          updateMatchProgress();
+        });
+        col2.appendChild(d);
+      });
+    }
+    function updateMatchProgress(){
+      const c=Object.keys(gameData.gameState.matches).length;
+      document.getElementById('matchProgress').textContent=`${c}/10`;
+      document.getElementById('matchProgressBar').style.width=`${c*10}%`;
+    }
+    function checkMatches(){
+      let correct=0;
+      gameData.gameState.idioms.forEach(item=>{
+        if(gameData.gameState.matches[item.idiom]===item.meaning){
+          correct++;
+          document.querySelector(`[data-meaning="${item.meaning}"]`).classList.add('correct-match');
+        } else {
+          const m=gameData.gameState.matches[item.idiom];
+          if(m) document.querySelector(`[data-meaning="${m}"]`).classList.add('wrong-match');
+        }
+      });
+      const score=correct*10;
+      gameData.zoneScores[0]=score;gameData.totalScore+=score;
+      if(correct>=8) gameData.unlockedZones[1]=true;
+      showResults(1,score,correct,10);
+    }
+
+    // ZONE2 True/False
+    function initZone2(){
+      gameData.gameState={questions:[...idiomsData.zone2],currentQ:0,score:0,lives:3,correct:0};
+      showTF();
+    }
+    function showTF(){
+      const s=gameData.gameState,q=s.questions[s.currentQ];
+      document.getElementById('tfQuestionNum').textContent=s.currentQ+1;
+      document.getElementById('livesCount').textContent=s.lives;
+      document.getElementById('tfIdiom').textContent=q.idiom;
+      document.getElementById('tfDefinition').textContent=q.meaning;
+      document.getElementById('tfProgressBar').style.width=`${(s.currentQ+1)*10}%`;
+    }
+    function answerTrueFalse(ans){
+      const s=gameData.gameState,q=s.questions[s.currentQ];
+      if(ans===q.correct){s.score+=5;s.correct++;}
+      else{s.lives--;s.score=Math.max(0,s.score-2);}
+      document.getElementById('currentScore').textContent=s.score;
+      if(s.lives<=0){s.currentQ=0;s.lives=3;s.score=0;showTF();return;}
+      s.currentQ++;
+      if(s.currentQ>=s.questions.length){
+        gameData.zoneScores[1]=s.score;gameData.totalScore+=s.score;gameData.unlockedZones[2]=true;
+        showResults(2,s.score,s.correct,s.questions.length);
+      } else setTimeout(showTF,500);
+    }
+
+    // ZONE3 Fill in the blank
+    function initZone3(){
+      gameData.gameState={questions:[...idiomsData.zone3],currentQ:0,score:0,correct:0};
+      showFB();
+    }
+    function showFB(){
+      const s=gameData.gameState,q=s.questions[s.currentQ];
+      document.getElementById('fibQuestionNum').textContent=s.currentQ+1;
+      document.getElementById('fibSentence').textContent=q.sentence;
+      document.getElementById('fibProgressBar').style.width=`${(s.currentQ+1)*10}%`;
+      const sel=document.getElementById('fibSelect');
+      sel.innerHTML='<option value="">Redewendung wählen…</option>';
+      q.options.forEach(o=>sel.innerHTML+=`<option value="${o}">${o}</option>`);
+      document.getElementById('bonusSentence').value='';
+    }
+    function submitFillBlank(){
+      const s=gameData.gameState,q=s.questions[s.currentQ];
+      const ans=document.getElementById('fibSelect').value;
+      if(!ans){alert('Bitte wählen!');return;}
+      if(ans===q.answer){s.score+=15;s.correct++;}
+      document.getElementById('currentScore').textContent=s.score;
+      s.currentQ++;
+      if(s.currentQ>=s.questions.length){
+        gameData.zoneScores[2]=s.score;gameData.totalScore+=s.score;gameData.unlockedZones[3]=true;
+        showResults(3,s.score,s.correct,s.questions.length);
+      } else setTimeout(showFB,500);
+    }
+    function submitBonus(){
+      const t=document.getElementById('bonusSentence').value.trim();
+      if(t.length>10){gameData.gameState.score+=5;document.getElementById('currentScore').textContent=gameData.gameState.score;alert('Bonus +5 Pkt!');document.getElementById('bonusSentence').value='';}
+      else alert('Schreibe einen längeren Satz!');
+    }
+
+    // ZONE4 Lightning
+    function initZone4(){
+      gameData.gameState={questions:[...idiomsData.zone4],currentQ:0,score:0,timeLeft:60,correct:0};
+      startTimer();showLQ();
+    }
+    function startTimer(){
+      document.getElementById('timerDisplay').classList.remove('hidden');
+      gameData.gameState.timer=setInterval(()=>{
+        const s=gameData.gameState;
+        s.timeLeft--;document.getElementById('lrTimer').textContent=s.timeLeft;
+        if(s.timeLeft<=10) document.getElementById('lrTimer').classList.add('timer-warning');
+        if(s.timeLeft<=0){clearInterval(s.timer);finishLQ();}
+      },1000);
+    }
+    function showLQ(){
+      const s=gameData.gameState,q=s.questions[s.currentQ];
+      document.getElementById('lrQuestionNum').textContent=s.currentQ+1;
+      document.getElementById('lrIdiom').textContent=q.idiom;
+      document.getElementById('lrProgressBar').style.width=`${(s.currentQ+1)*5}%`;
+      const c=document.getElementById('lrOptions');c.innerHTML='';
+      q.options.forEach((o,i)=>{
+        c.innerHTML+=`<button class="bg-yellow-100 hover:bg-yellow-200 border-2 border-yellow-300 rounded-lg p-4 font-semibold w-full" onclick="answerLQ(${i})">${o}</button>`;
+      });
+    }
+    function answerLQ(i){
+      const s=gameData.gameState,q=s.questions[s.currentQ];
+      if(i===q.answer){s.score+=5+s.timeLeft;s.correct++;}
+      document.getElementById('currentScore').textContent=s.score;
+      s.currentQ++;
+      if(s.currentQ>=s.questions.length||s.timeLeft<=0) finishLQ();
+      else showLQ();
+    }
+    function finishLQ(){
+      const s=gameData.gameState;clearInterval(s.timer);document.getElementById('timerDisplay').classList.add('hidden');
+      gameData.zoneScores[3]=s.score;gameData.totalScore+=s.score;gameData.unlockedZones[4]=true;
+      showResults(4,s.score,s.correct,Math.min(s.questions.length,20));
+    }
+
+    // ZONE5 Szenario
+    function initZone5(){
+      gameData.gameState={scenarios:[...idiomsData.zone5],currentS:0,score:0,correct:0};
+      showScenario();
+    }
+    function showScenario(){
+      const s=gameData.gameState,sc=s.scenarios[s.currentS];
+      document.getElementById('scenarioNum').textContent=s.currentS+1;
+      document.getElementById('scenarioTitle').textContent=sc.title;
+      document.getElementById('scenarioDescription').textContent=sc.description;
+      document.getElementById('scenarioQuestion').textContent=sc.question;
+      document.getElementById('scenarioProgressBar').style.width=`${(s.currentS+1)*12.5}%`;
+      const c=document.getElementById('scenarioOptions');c.innerHTML='';
+      sc.options.forEach((o,i)=>{
+        c.innerHTML+=`<button class="bg-purple-100 hover:bg-purple-200 border-2 border-purple-300 rounded-lg p-4 w-full text-left font-semibold" onclick="answerScenario(${i})"><div>${o.text}</div><div class="text-sm text-gray-600 mt-1">Redewendung: "${o.idiom}"</div></button>`;
+      });
+    }
+    function answerScenario(i){
+      const s=gameData.gameState,sc=s.scenarios[s.currentS];
+      if(sc.options[i].correct){s.score+=20;s.correct++;}
+      document.getElementById('currentScore').textContent=s.score;
+      s.currentS++;
+      if(s.currentS>=s.scenarios.length){
+        gameData.zoneScores[4]=s.score;gameData.totalScore+=s.score;
+        showResults(5,s.score,s.correct,s.scenarios.length);
+      } else setTimeout(showScenario,800);
+    }
+
+    // Ergebnisse
+    function showResults(z,score,correct,total){
+      const pct=Math.round(correct/total*100);
+      document.getElementById('resultsIcon').textContent=pct>=80?'🎉':pct>=60?'👍':'💪';
+      document.getElementById('resultsTitle').textContent=pct>=80?'Ausgezeichnet!':pct>=60?'Gut gemacht!':'Weiter üben!';
+      document.getElementById('resultsMessage').textContent=pct>=80
+        ?`Diese Zone mit ${pct}% richtig gemeistert!`
+        :pct>=60
+        ?`Du hast ${pct}% richtig beantwortet. Weiter so!`
+        :`Nur ${pct}% richtig. Übung macht den Meister!`;
+      document.getElementById('resultsScore').textContent=`+${score} Pkt.`;
+      document.getElementById('resultsModal').classList.remove('hidden');
+    }
+    function closeResults(){
+      document.getElementById('resultsModal').classList.add('hidden');
+      returnToMenu();
+    }
+    function returnToMenu(){
+      document.getElementById('gameScreen').classList.add('hidden');
+      document.getElementById('mainMenu').classList.remove('hidden');
+      updateDisplay();
+    }
+
+    initGame();
+  </script>
+</body>
+</html>
