@@ -1,497 +1,795 @@
+
 <!DOCTYPE html>
 <html lang="it">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>🌴 Avventura nell'Isola degli Idiomi</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <style>
-    @import url('https://fonts.googleapis.com/css2?family=Fredoka+One&family=Inter&display=swap');
-    .game-font { font-family: 'Fredoka One', cursive; }
-    .body-font { font-family: 'Inter', sans-serif; }
-    .island-bg {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      min-height: 100vh;
-    }
-    .zone-card {
-      transition: all 0.3s ease;
-      transform: translateY(0);
-    }
-    .zone-card:hover {
-      transform: translateY(-5px);
-      box-shadow: 0 20px 40px rgba(0,0,0,0.1);
-    }
-    .zone-locked {
-      opacity: 0.6;
-      filter: grayscale(100%);
-    }
-    .progress-bar {
-      transition: width 0.5s ease;
-    }
-    .drag-item {
-      cursor: grab;
-      transition: all 0.2s ease;
-    }
-    .drag-item:hover {
-      transform: scale(1.05);
-    }
-    .drop-zone {
-      min-height: 60px;
-      transition: all 0.2s ease;
-      user-select:none;
-    }
-    .drop-zone.drag-over {
-      background-color: #e0f2fe;
-      border-color: #0287c7;
-    }
-    .correct-match {
-      background-color: #dcfce7 !important;
-      border-color: #16a34a !important;
-    }
-    .wrong-match {
-      background-color: #fee2e2 !important;
-      border-color: #dc2626 !important;
-    }
-    @keyframes pulse {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.5; }
-    }
-    .timer-warning {
-      animation: pulse 1s infinite;
-    }
-  </style>
-</head>
-<body class="island-bg body-font text-gray-800">
-  <div id="app">
-    <!-- Main Menu -->
-    <div id="mainMenu" class="container mx-auto px-4 py-8">
-      <div class="text-center mb-12">
-        <h1 class="game-font text-6xl text-white mb-4">🏝️ Avventura nell'Isola degli Idiomi</h1>
-        <p class="text-xl text-blue-100 mb-8">Impara 50 modi di dire italiani con sfide divertenti!</p>
-        <div class="bg-white/20 backdrop-blur-sm rounded-2xl p-6 max-w-md mx-auto mb-8">
-          <div class="flex justify-between items-center mb-4">
-            <span class="text-white font-semibold">Punteggio Totale</span>
-            <span id="totalScore" class="text-yellow-300 text-2xl font-bold">0</span>
-          </div>
-          <div class="w-full bg-white/20 rounded-full h-3">
-            <div id="overallProgress" class="progress-bar bg-gradient-to-r from-yellow-400 to-orange-500 h-3 rounded-full" style="width:0%"></div>
-          </div>
-          <p class="text-blue-100 mt-2">Progresso verso Maestro degli Idiomi</p>
-        </div>
-      </div>
-      <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
-        <!-- Zone Cards -->
-        <div class="zone-card bg-white rounded-2xl p-6 shadow-xl" data-zone="1">
-          <div class="text-center">
-            <div class="text-4xl mb-4">🏖️</div>
-            <h3 class="game-font text-2xl text-blue-600 mb-2">Baia degli Abbinamenti</h3>
-            <p class="text-gray-600 mb-4">Abbina gli idiomi e le loro definizioni</p>
-            <div class="flex justify-between text-sm text-gray-500 mb-4">
-              <span>Max 100 pt</span>
-              <span id="zone1Score">Pt 0</span>
-            </div>
-            <button class="bg-blue-500 text-white py-2 px-6 rounded-full font-semibold hover:bg-blue-600" onclick="startZone(1)">Inizia</button>
-          </div>
-        </div>
-        <div class="zone-card bg-white rounded-2xl p-6 shadow-xl zone-locked" data-zone="2">
-          <div class="text-center">
-            <div class="text-4xl mb-4">⛰️</div>
-            <h3 class="game-font text-2xl text-gray-400 mb-2">Scogliera Bluff</h3>
-            <p class="text-gray-400 mb-4">Sfide Vero/Falso</p>
-            <div class="flex justify-between text-sm text-gray-400 mb-4">
-              <span>Max 100 pt</span>
-              <span id="zone2Score">Pt 0</span>
-            </div>
-            <button class="bg-gray-300 text-gray-500 py-2 px-6 rounded-full cursor-not-allowed" disabled>Bloccata</button>
-          </div>
-        </div>
-        <div class="zone-card bg-white rounded-2xl p-6 shadow-xl zone-locked" data-zone="3">
-          <div class="text-center">
-            <div class="text-4xl mb-4">💎</div>
-            <h3 class="game-font text-2xl text-gray-400 mb-2">Scrigno del Tesoro</h3>
-            <p class="text-gray-400 mb-4">Completa le frasi</p>
-            <div class="flex justify-between text-sm text-gray-400 mb-4">
-              <span>Max 150 pt</span>
-              <span id="zone3Score">Pt 0</span>
-            </div>
-            <button class="bg-gray-300 text-gray-500 py-2 px-6 rounded-full cursor-not-allowed" disabled>Bloccata</button>
-          </div>
-        </div>
-        <div class="zone-card bg-white rounded-2xl p-6 shadow-xl zone-locked" data-zone="4">
-          <div class="text-center">
-            <div class="text-4xl mb-4">⚡</div>
-            <h3 class="game-font text-2xl text-gray-400 mb-2">Laguna Fulminea</h3>
-            <p class="text-gray-400 mb-4">Quiz Veloce</p>
-            <div class="flex justify-between text-sm text-gray-400 mb-4">
-              <span>Max 100 pt</span>
-              <span id="zone4Score">Pt 0</span>
-            </div>
-            <button class="bg-gray-300 text-gray-500 py-2 px-6 rounded-full cursor-not-allowed" disabled>Bloccata</button>
-          </div>
-        </div>
-        <div class="zone-card bg-white rounded-2xl p-6 shadow-xl zone-locked" data-zone="5">
-          <div class="text-center">
-            <div class="text-4xl mb-4">🌀</div>
-            <h3 class="game-font text-2xl text-gray-400 mb-2">Labirinto degli Idiomi</h3>
-            <p class="text-gray-400 mb-4">Sfide Scenario</p>
-            <div class="flex justify-between text-sm text-gray-400 mb-4">
-              <span>Max 150 pt</span>
-              <span id="zone5Score">Pt 0</span>
-            </div>
-            <button class="bg-gray-300 text-gray-500 py-2 px-6 rounded-full cursor-not-allowed" disabled>Bloccata</button>
-          </div>
-        </div>
-        <div class="zone-card bg-gradient-to-br from-yellow-400 to-orange-500 rounded-2xl p-6 shadow-xl">
-          <div class="text-center text-white">
-            <div class="text-4xl mb-4">🏆</div>
-            <h3 class="game-font text-2xl mb-2">Il tuo rango</h3>
-            <p id="playerRank" class="text-lg font-semibold">Inizia a giocare</p>
-            <div class="text-sm opacity-75">
-              <div>🏆 500+ pt Campione</div>
-              <div>🧭 400+ pt Esploratore</div>
-              <div>💡 0+ pt Principiante</div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Schermata di gioco -->
-    <div id="gameScreen" class="hidden container mx-auto p-8">
-      <div class="bg-white/20 backdrop-blur-sm rounded-xl p-4 mb-6 flex justify-between items-center">
-        <button onclick="returnToMenu()" class="bg-white/20 text-white py-2 px-4 rounded hover:bg-white/30">← Torna indietro</button>
-        <div class="text-center">
-          <h2 id="zoneTitle" class="game-font text-2xl text-white"></h2>
-          <p id="zoneDescription" class="text-blue-100"></p>
-        </div>
-        <div class="text-white font-semibold">
-          Punteggio: <span id="currentScore">0</span>
-          <span id="timerDisplay" class="ml-6 text-yellow-300 font-bold hidden"></span>
-        </div>
-      </div>
-
-      <!-- Zona 1 Game -->
-      <div id="zone1Game" class="hidden bg-white rounded-xl p-6 shadow-xl">
-        <div class="mb-6">
-          <div class="flex justify-between">
-            <span class="font-semibold">Progresso</span>
-            <span id="matchProgress">0/10</span>
-          </div>
-          <div class="w-full bg-gray-200 rounded-full h-3 mt-1">
-            <div id="matchProgressBar" class="bg-blue-500 h-3 rounded-full" style="width:0%"></div>
-          </div>
-        </div>
-        <div class="grid md:grid-cols-2 gap-8">
-          <div id="idiomsColumn" class="space-y-3"></div>
-          <div id="meaningsColumn" class="space-y-3"></div>
-        </div>
-        <div class="mt-6 text-center">
-          <button id="checkMatches" class="bg-green-500 text-white py-3 px-8 rounded font-semibold hover:bg-green-600" onclick="checkMatches()">Controlla risposte</button>
-        </div>
-      </div>
-
-      <!-- Zona 2 Game -->
-      <div id="zone2Game" class="hidden bg-white rounded-xl p-6 shadow-xl max-w-2xl mx-auto">
-        <div class="mb-6">
-          <div class="flex justify-between items-center mb-2">
-            <span class="font-semibold">Domanda <span id="tfQuestionNum">1</span>/10</span>
-            <span class="text-red-500 font-semibold">Vite: <span id="livesCount">3</span> ❤️</span>
-          </div>
-          <div class="w-full bg-gray-200 rounded-full h-3">
-            <div id="tfProgressBar" class="progress-bar bg-purple-500 h-3 rounded-full" style="width: 10%"></div>
-          </div>
-        </div>
-        <div class="text-center mb-8">
-          <div class="bg-blue-50 rounded-xl p-6 mb-6">
-            <h3 id="tfIdiom" class="text-2xl font-bold text-blue-600 mb-4"></h3>
-            <p id="tfDefinition" class="text-lg text-gray-700"></p>
-          </div>
-          <div class="space-x-4">
-            <button onclick="answerTrueFalse(true)" class="bg-green-500 hover:bg-green-600 text-white px-8 py-4 rounded-full font-bold text-xl">✓ VERO</button>
-            <button onclick="answerTrueFalse(false)" class="bg-red-500 hover:bg-red-600 text-white px-8 py-4 rounded-full font-bold text-xl">✗ FALSO</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Zona 3 Game -->
-      <div id="zone3Game" class="hidden bg-white rounded-xl p-6 shadow-xl max-w-2xl mx-auto">
-        <div class="mb-6">
-          <div class="flex justify-between items-center mb-2">
-            <span class="font-semibold">Domanda <span id="fibQuestionNum">1</span>/10</span>
-            <span class="font-semibold">Bonus 📝</span>
-          </div>
-          <div class="w-full bg-gray-200 rounded-full h-3">
-            <div id="fibProgressBar" class="progress-bar bg-green-500 h-3 rounded-full" style="width: 10%"></div>
-          </div>
-        </div>
-        <div class="text-center mb-8">
-          <div class="bg-green-50 rounded-xl p-6 mb-6">
-            <p id="fibSentence" class="text-lg text-gray-700 mb-4"></p>
-            <select id="fibSelect" class="border-2 border-green-300 rounded-lg px-4 py-2 text-lg font-semibold bg-white">
-              <option value="">Scegli un idioma...</option>
-            </select>
-          </div>
-          <button onclick="submitFillBlank()" class="bg-green-500 hover:bg-green-600 text-white px-8 py-3 rounded-full font-semibold mb-4">Invia Risposta</button>
-          <div class="border-t pt-4">
-            <p class="text-sm text-gray-600 mb-2">Bonus: Scrivi una frase con questo idioma</p>
-            <textarea id="bonusSentence" class="w-full border-2 border-gray-300 rounded-lg p-3 text-sm" placeholder="Scrivi la tua frase..."></textarea>
-            <button onclick="submitBonus()" class="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-lg font-semibold mt-2">Invia (+5 pt)</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Zona 4 Game -->
-      <div id="zone4Game" class="hidden bg-white rounded-xl p-6 shadow-xl max-w-2xl mx-auto">
-        <div class="mb-6">
-          <div class="flex justify-between items-center mb-2">
-            <span class="font-semibold">Domanda <span id="lrQuestionNum">1</span>/20</span>
-            <span id="lrTimer" class="text-2xl font-bold text-red-500">60</span>
-          </div>
-          <div class="w-full bg-gray-200 rounded-full h-3">
-            <div id="lrProgressBar" class="progress-bar bg-yellow-500 h-3 rounded-full" style="width: 5%"></div>
-          </div>
-        </div>
-        <div class="text-center mb-8">
-          <div class="bg-yellow-50 rounded-xl p-6 mb-6">
-            <h3 id="lrIdiom" class="text-2xl font-bold text-yellow-600 mb-4"></h3>
-          </div>
-          <div id="lrOptions" class="grid grid-cols-2 gap-4"></div>
-        </div>
-      </div>
-
-      <!-- Zona 5 Game -->
-      <div id="zone5Game" class="hidden bg-white rounded-xl p-6 shadow-xl max-w-3xl mx-auto">
-        <div class="mb-6">
-          <div class="flex justify-between items-center mb-2">
-            <span class="font-semibold">Scenario <span id="scenarioNum">1</span>/8</span>
-            <span class="font-semibold">Sfida finale 🌟</span>
-          </div>
-          <div class="w-full bg-gray-200 rounded-full h-3">
-            <div id="scenarioProgressBar" class="progress-bar bg-purple-500 h-3 rounded-full" style="width: 12.5%"></div>
-          </div>
-        </div>
-        <div class="mb-8">
-          <div class="bg-purple-50 rounded-xl p-6 mb-6">
-            <h3 id="scenarioTitle" class="text-xl font-bold text-purple-600 mb-4"></h3>
-            <p id="scenarioDescription" class="text-gray-700 mb-4"></p>
-            <p id="scenarioQuestion" class="font-semibold text-gray-800"></p>
-          </div>
-          <div id="scenarioOptions" class="space-y-3"></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Modal risultati -->
-    <div id="resultsModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div class="bg-white rounded-xl shadow p-8 max-w-md text-center">
-        <div id="resultsIcon" class="text-6xl mb-4"></div>
-        <h3 id="resultsTitle" class="game-font text-2xl mb-4"></h3>
-        <p id="resultsMessage" class="mb-6"></p>
-        <div id="resultsScore" class="text-3xl font-bold mb-6 text-blue-600"></div>
-        <button class="bg-blue-500 hover:bg-blue-600 text-white py-3 px-8 rounded font-semibold" onclick="closeResults()">Continua</button>
-      </div>
-    </div>
-
-  </div>
-
-  <script>
-    // Game data and functions aligned
-    const gameData = {
-      totalScore: 0,
-      zoneScores: [0, 0, 0, 0, 0],
-      unlockedZones: [true, false, false, false, false],
-      currentZone: 0,
-      currentQuestion: 0,
-      gameState: {}
-    };
-
-    const idiomsData = {
-      zone1: [
-        { idiom: "Avere le mani bucate", meaning: "Spendere soldi senza controllo" },
-        { idiom: "Essere in alto mare", meaning: "Essere ancora in grande ritardo" },
-        { idiom: "Essere pane per i tuoi denti", meaning: "Essere molto facile" },
-        { idiom: "Avere il prosciutto sugli occhi", meaning: "Non vedere l'evidenza" },
-        { idiom: "Mettere il carro davanti ai buoi", meaning: "Fare le cose nell'ordine sbagliato" },
-        { idiom: "Non sapere dove sbattere la testa", meaning: "Essere molto confuso" },
-        { idiom: "Passare la notte in bianco", meaning: "Non riuscire a dormire" },
-        { idiom: "Tirare l'acqua al proprio mulino", meaning: "Agire a proprio vantaggio" },
-        { idiom: "Saltare di palo in frasca", meaning: "Passare da un argomento all'altro" },
-        { idiom: "Essere sordo come una campana", meaning: "Non sentire" }
-      ],
-      zone2: [
-        { idiom: "Non tutte le ciambelle riescono col buco", meaning: "Non tutto va sempre come previsto", correct: true },
-        { idiom: "Prendere due piccioni con una fava", meaning: "Raggiungere due obiettivi con un'unica azione", correct: true },
-        { idiom: "Andare in bianco", meaning: "Ripresentarsi senza successo", correct: false },
-        { idiom: "Buttare fumo negli occhi", meaning: "Confondere intenzionalmente", correct: true },
-        { idiom: "Scoprire l'acqua calda", meaning: "Scoprire qualcosa di ovvio", correct: false },
-        { idiom: "Piantare in asso", meaning: "Abbandonare qualcuno all'improvviso", correct: true },
-        { idiom: "Non vedere più in là del proprio naso", meaning: "Avere una visione molto limitata", correct: true },
-        { idiom: "Avere la luna storta", meaning: "Essere di cattivo umore", correct: true },
-        { idiom: "Avere grilli per la testa", meaning: "Avere idee strane", correct: true },
-        { idiom: "Essere un fanfarone", meaning: "Vantarsi eccessivamente", correct: true }
-      ],
-      zone3: [
-        {
-          sentence: "Ho dovuto _______ e affrontare le conseguenze.",
-          answer: "ingoiare il rospo",
-          options: ["ingoiare il rospo", "alzare il gomito", "prendere il toro per le corna", "piantare un chiodo"]
-        },
-        {
-          sentence: "Non è il caso di _______ prima del tempo.",
-          answer: "gioire troppo presto",
-          options: ["gioire troppo presto", "mangiare la foglia", "andare a braccio", "alzare un polverone"]
-        },
-        {
-          sentence: "Questo progetto mi farà _______ ma varrà la pena.",
-          answer: "costare un occhio della testa",
-          options: ["costare un occhio della testa", "essere un gioco da ragazzi", "passare la notte in bianco", "sbagliare grosso"]
-        },
-        {
-          sentence: "Dopo tanto lavoro, meritiamo _______ per oggi.",
-          answer: "chiudere in bellezza",
-          options: ["chiudere in bellezza", "dormire sugli allori", "dare una mano", "fare buon viso a cattiva sorte"]
-        },
-        {
-          sentence: "Smetti di _______ e dimmi la verità.",
-          answer: "girarci intorno",
-          options: ["girarci intorno", "rimestare nel torbido", "infilare il naso dove non batte il sole", "dare buca"]
-        },
-        {
-          sentence: "Licenziarmi è stato _______ perché ho trovato di meglio.",
-          answer: "una fortuna inaspettata",
-          options: ["una fortuna inaspettata", "una goccia nel mare", "un buco nell'acqua", "una pietra miliare"]
-        },
-        {
-          sentence: "Credo di _______ con questo impegno.",
-          answer: "aver preso un impegno eccessivo",
-          options: ["aver preso un impegno eccessivo", "andare per il sottile", "guardare al pelo", "sparare alto"]
-        },
-        {
-          sentence: "_______ -- almeno sei venuto.",
-          answer: "meglio tardi che mai",
-          options: ["meglio tardi che mai", "mettere il carro davanti ai buoi", "piantare bandiera", "prendere fiato"]
-        },
-        {
-          sentence: "Da oggi _______ -- tocca a te decidere.",
-          answer: "la palla è nel tuo campo",
-          options: ["la palla è nel tuo campo", "mettere i bastoni tra le ruote", "tirare la carretta", "girare pagina"]
-        },
-        {
-          sentence: "Basta _______ -- il passato è passato.",
-          answer: "piangere sul latte versato",
-          options: ["piangere sul latte versato", "cambiare cavallo in corsa", "correre dietro al vento", "strofinare il naso"]
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Isola dei Modi di Dire</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fredoka+One:wght@400&family=Inter:wght@400;500;600;700&display=swap');
+        .game-font { font-family: 'Fredoka One', cursive; }
+        .body-font { font-family: 'Inter', sans-serif; }
+        .island-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
         }
-      ],
-      zone4: [
-        { idiom: "Avere le mani bucate", options: ["Spendere troppo", "Risparmiare", "Ostacolare", "Ignorare"], answer: 0 },
-        { idiom: "Essere in alto mare", options: ["Molto indietro", "Molto avanti", "Indeciso", "Arrivato"], answer: 0 },
-        { idiom: "Essere pane per i tuoi denti", options: ["Molto facile", "Molto difficile", "Molto costoso", "Molto lontano"], answer: 0 },
-        { idiom: "Avere il prosciutto sugli occhi", options: ["Non vedere l'evidenza", "Essere ciechi", "Non ascoltare", "Essere stupidi"], answer: 0 },
-        { idiom: "Mettere il carro davanti ai buoi", options: ["Fare le cose fuori ordine", "Essere disordinati", "Essere avanti", "Essere in ritardo"], answer: 0 },
-        { idiom: "Non sapere dove sbattere la testa", options: ["Essere confuso", "Essere calmo", "Essere intelligente", "Essere veloce"], answer: 0 },
-        { idiom: "Passare la notte in bianco", options: ["Non riuscire a dormire", "Dormire profondamente", "Stancarsi", "Svegliare"], answer: 0 },
-        { idiom: "Tirare l'acqua al proprio mulino", options: ["Agire a proprio vantaggio", "Essere egoisti", "Aiutare gli altri", "Ignorare i problemi"], answer: 0 },
-        { idiom: "Saltare di palo in frasca", options: ["Cambiare argomento", "Essere leale", "Essere puntuale", "Essere lento"], answer: 0 },
-        { idiom: "Essere sordo come una campana", options: ["Non sentire", "Essere intelligente", "Essere attento", "Essere silenzioso"], answer: 0 }
-      ],
-      zone5: [
-        {
-          title: "Crisi di scadenza in ufficio",
-          description: "Il team ha mancato una deadline importante.",
-          question: "Cosa dire al capo?",
-          options: [
-            { text: "Dobbiamo ingoiare il rospo e assumere la responsabilità.", idiom: "ingoiare il rospo", correct: true },
-            { text: "Facciamo saltare il banco e aspettiamo.", idiom: "saltare il banco", correct: false },
-            { text: "Non tutte le ciambelle riescono col buco, è finita.", idiom: "ciambelle col buco", correct: false },
-            { text: "È pane per i tuoi denti, lo sistemo in un secondo.", idiom: "pane per i tuoi denti", correct: false }
-          ]
-        },
-        // Similarly define scenarios 2–8 here.
-      ]
-    };
+        .zone-card { transition: all 0.3s ease; }
+        .zone-card:hover { transform: translateY(-5px); box-shadow: 0 20px 40px rgba(0,0,0,0.1); }
+        .zone-locked { opacity: 0.6; filter: grayscale(100%); }
+        .progress-bar { transition: width 0.5s ease; }
+        .drag-item { cursor: grab; transition: all 0.2s ease; }
+        .drag-item:hover { transform: scale(1.05); }
+        .drop-zone { min-height: 60px; transition: all 0.2s ease; }
+        .drop-zone.drag-over { background-color: #e0f2fe; border-color: #0284c7; }
+        .correct-match { background-color: #dcfce7 !important; border-color: #16a34a !important; }
+        .wrong-match { background-color: #fef2f2 !important; border-color: #dc2626 !important; }
+        @keyframes bounce { 0%, 20%, 50%, 80%, 100% { transform: translateY(0); } 40% { transform: translateY(-10px); } 60% { transform: translateY(-5px); } }
+        .bounce-animation { animation: bounce 0.6s; }
+        .timer-warning { animation: pulse 1s infinite; }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+    </style>
+</head>
+<body class="island-bg body-font">
+    <div id="app" class="min-h-screen">
+        <div id="mainMenu" class="container mx-auto px-4 py-8">
+            <div class="text-center mb-12">
+                <h1 class="game-font text-6xl text-white mb-4">🏝️ Isola dei Modi di Dire</h1>
+                <p class="text-xl text-blue-100 mb-8">Impara 100 modi di dire con sfide entusiasmanti!</p>
+                <div class="bg-white/20 backdrop-blur-sm rounded-2xl p-6 max-w-md mx-auto mb-8">
+                    <div class="flex justify-between items-center mb-4">
+                        <span class="text-white font-semibold">Punteggio Totale:</span>
+                        <span id="totalScore" class="text-2xl font-bold text-yellow-300">0</span>
+                    </div>
+                    <div class="w-full bg-white/20 rounded-full h-3">
+                        <div id="overallProgress" class="progress-bar bg-gradient-to-r from-yellow-400 to-orange-500 h-3 rounded-full" style="width: 0%"></div>
+                    </div>
+                    <p class="text-blue-100 text-sm mt-2">Progresso per Maestro di Modi di Dire</p>
+                </div>
+            </div>
+            
+            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
+                <div class="zone-card bg-white rounded-2xl p-6 shadow-xl" data-zone="1">
+                    <div class="text-center">
+                        <div class="text-4xl mb-4">🏖️</div>
+                        <h3 class="game-font text-2xl text-blue-600 mb-2">Baia degli Abbinamenti</h3>
+                        <p class="text-gray-600 mb-4">Abbina i modi di dire ai loro significati</p>
+                        <div class="flex justify-between text-sm text-gray-500 mb-4">
+                            <span>Max: 100 pts</span>
+                            <span id="zone1Score">Punteggio: 0</span>
+                        </div>
+                        <button onclick="startZone(1)" class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-full font-semibold">
+                            Inizia l’Avventura
+                        </button>
+                    </div>
+                </div>
+                <div class="zone-card bg-white rounded-2xl p-6 shadow-xl zone-locked" data-zone="2">
+                    <div class="text-center">
+                        <div class="text-4xl mb-4">⛰️</div>
+                        <h3 class="game-font text-2xl text-gray-400 mb-2">Scogliere dell’Inganno</h3>
+                        <p class="text-gray-400 mb-4">Sfide Vero o Falso</p>
+                        <div class="flex justify-between text-sm text-gray-400 mb-4">
+                            <span>Max: 100 pts</span>
+                            <span id="zone2Score">Punteggio: 0</span>
+                        </div>
+                        <button class="bg-gray-300 text-gray-500 px-6 py-2 rounded-full font-semibold cursor-not-allowed">
+                            🔒 Bloccato
+                        </button>
+                    </div>
+                </div>
+                <div class="zone-card bg-white rounded-2xl p-6 shadow-xl zone-locked" data-zone="3">
+                    <div class="text-center">
+                        <div class="text-4xl mb-4">💎</div>
+                        <h3 class="game-font text-2xl text-gray-400 mb-2">Tesoro Nascosto</h3>
+                        <p class="text-gray-400 mb-4">Completa le frasi</p>
+                        <div class="flex justify-between text-sm text-gray-400 mb-4">
+                            <span>Max: 150 pts</span>
+                            <span id="zone3Score">Punteggio: 0</span>
+                        </div>
+                        <button class="bg-gray-300 text-gray-500 px-6 py-2 rounded-full font-semibold cursor-not-allowed">
+                            🔒 Bloccato
+                        </button>
+                    </div>
+                </div>
+                <div class="zone-card bg-white rounded-2xl p-6 shadow-xl zone-locked" data-zone="4">
+                    <div class="text-center">
+                        <div class="text-4xl mb-4">⚡</div>
+                        <h3 class="game-font text-2xl text-gray-400 mb-2">Laguna dei Fulmini</h3>
+                        <p class="text-gray-400 mb-4">Quiz a raffica</p>
+                        <div class="flex justify-between text-sm text-gray-400 mb-4">
+                            <span>Max: 100 pts</span>
+                            <span id="zone4Score">Punteggio: 0</span>
+                        </div>
+                        <button class="bg-gray-300 text-gray-500 px-6 py-2 rounded-full font-semibold cursor-not-allowed">
+                            🔒 Bloccato
+                        </button>
+                    </div>
+                </div>
+                <div class="zone-card bg-white rounded-2xl p-6 shadow-xl zone-locked" data-zone="5">
+                    <div class="text-center">
+                        <div class="text-4xl mb-4">🌀</div>
+                        <h3 class="game-font text-2xl text-gray-400 mb-2">Labirinto dei Modi di Dire</h3>
+                        <p class="text-gray-400 mb-4">Sfide con scenari</p>
+                        <div class="flex justify-between text-sm text-gray-400 mb-4">
+                            <span>Max: 150 pts</span>
+                            <span id="zone5Score">Punteggio: 0</span>
+                        </div>
+                        <button class="bg-gray-300 text-gray-500 px-6 py-2 rounded-full font-semibold cursor-not-allowed">
+                            🔒 Bloccato
+                        </button>
+                    </div>
+                </div>
+                <div class="zone-card bg-gradient-to-br from-yellow-400 to-orange-500 rounded-2xl p-6 shadow-xl">
+                    <div class="text-center text-white">
+                        <div class="text-4xl mb-4">🏆</div>
+                        <h3 class="game-font text-2xl mb-2">Il Tuo Grado</h3>
+                        <p id="playerRank" class="text-lg font-semibold mb-2">Continua ad Allenarti</p>
+                        <div class="text-sm opacity-90">
+                            <div>🏆 500+ pts: Campione</div>
+                            <div>🧭 400+ pts: Esploratore</div>
+                            <div>💡 0+ pts: Apprendista</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div id="gameScreen" class="hidden container mx-auto px-4 py-8">
+            <div class="bg-white/20 backdrop-blur-sm rounded-2xl p-4 mb-6">
+                <div class="flex justify-between items-center">
+                    <button onclick="returnToMenu()" class="bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-lg">
+                        ← Torna all'Isola
+                    </button>
+                    <div class="text-center">
+                        <h2 id="zoneTitle" class="game-font text-2xl text-white"></h2>
+                        <p id="zoneDescription" class="text-blue-100"></p>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-white font-semibold">Punteggio: <span id="currentScore">0</span></div>
+                        <div id="timerDisplay" class="text-yellow-300 font-bold hidden"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="zone1Game" class="hidden">
+                <div class="bg-white rounded-2xl p-6 shadow-xl">
+                    <div class="mb-6">
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="font-semibold">Progresso</span>
+                            <span id="matchProgress">0/10</span>
+                        </div>
+                        <div class="w-full bg-gray-200 rounded-full h-3">
+                            <div id="matchProgressBar" class="progress-bar bg-blue-500 h-3 rounded-full" style="width: 0%"></div>
+                        </div>
+                    </div>
+                    <div class="grid md:grid-cols-2 gap-8">
+                        <div>
+                            <h3 class="font-bold text-lg mb-4 text-center">Modi di Dire</h3>
+                            <div id="idiomsColumn" class="space-y-3"></div>
+                        </div>
+                        <div>
+                            <h3 class="font-bold text-lg mb-4 text-center">Significati</h3>
+                            <div id="meaningsColumn" class="space-y-3"></div>
+                        </div>
+                    </div>
+                    <div class="text-center mt-6">
+                        <button id="checkMatches" onclick="checkMatches()" class="bg-green-500 hover:bg-green-600 text-white px-8 py-3 rounded-full font-semibold">
+                            Controlla Risposte
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="zone2Game" class="hidden">
+                <div class="bg-white rounded-2xl p-6 shadow-xl max-w-2xl mx-auto">
+                    <div class="mb-6">
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="font-semibold">Domanda <span id="tfQuestionNum">1</span>/10</span>
+                            <span class="text-red-500 font-semibold">Vite: <span id="livesCount">3</span></span>
+                        </div>
+                        <div class="w-full bg-gray-200 rounded-full h-3">
+                            <div id="tfProgressBar" class="progress-bar bg-purple-500 h-3 rounded-full" style="width: 10%"></div>
+                        </div>
+                    </div>
+                    <div class="text-center mb-8">
+                        <div class="bg-blue-50 rounded-xl p-6 mb-6">
+                            <h3 class="text-2xl font-bold text-blue-600 mb-4" id="tfIdiom"></h3>
+                            <p class="text-lg text-gray-700" id="tfDefinition"></p>
+                        </div>
+                        <div class="space-x-4">
+                            <button onclick="answerTrueFalse(true)" class="bg-green-500 hover:bg-green-600 text-white px-8 py-4 rounded-full font-bold text-xl">
+                                ✓ VERO
+                            </button>
+                            <button onclick="answerTrueFalse(false)" class="bg-red-500 hover:bg-red-600 text-white px-8 py-4 rounded-full font-bold text-xl">
+                                ✗ FALSO
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="zone3Game" class="hidden">
+                <div class="bg-white rounded-2xl p-6 shadow-xl max-w-2xl mx-auto">
+                    <div class="mb-6">
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="font-semibold">Domanda <span id="fibQuestionNum">1</span>/5</span>
+                             <span class="font-semibold">Bonus Disponibile! 📝</span>
+                        </div>
+                        <div class="w-full bg-gray-200 rounded-full h-3">
+                            <div id="fibProgressBar" class="progress-bar bg-green-500 h-3 rounded-full" style="width: 20%"></div>
+                        </div>
+                    </div>
+                    <div class="text-center mb-8">
+                        <div class="bg-green-50 rounded-xl p-6 mb-6">
+                            <p class="text-lg text-gray-700 mb-4" id="fibSentence"></p>
+                            <select id="fibSelect" class="border-2 border-green-300 rounded-lg px-4 py-2 text-lg font-semibold bg-white">
+                                <option value="">Scegli un'opzione...</option>
+                            </select>
+                        </div>
+                        <button onclick="submitFillBlank()" class="bg-green-500 hover:bg-green-600 text-white px-8 py-3 rounded-full font-semibold mb-4">
+                            Invia Risposta
+                        </button>
+                        <div class="border-t pt-4">
+                            <p class="text-sm text-gray-600 mb-2">Bonus: Crea la tua frase!</p>
+                            <textarea id="bonusSentence" placeholder="Scrivi qui la tua frase..." class="w-full border-2 border-gray-300 rounded-lg p-3 text-sm"></textarea>
+                            <button onclick="submitBonus()" class="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-lg font-semibold mt-2">
+                                Invia Bonus (+5)
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="zone4Game" class="hidden">
+                <div class="bg-white rounded-2xl p-6 shadow-xl max-w-2xl mx-auto">
+                    <div class="mb-6">
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="font-semibold">Domanda <span id="lrQuestionNum">1</span>/5</span>
+                            <span id="lrTimer" class="text-2xl font-bold text-red-500">60</span>
+                        </div>
+                        <div class="w-full bg-gray-200 rounded-full h-3">
+                            <div id="lrProgressBar" class="progress-bar bg-yellow-500 h-3 rounded-full" style="width: 20%"></div>
+                        </div>
+                    </div>
+                    <div class="text-center mb-8">
+                        <div class="bg-yellow-50 rounded-xl p-6 mb-6">
+                            <h3 class="text-2xl font-bold text-yellow-600 mb-4" id="lrIdiom"></h3>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4" id="lrOptions"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="zone5Game" class="hidden">
+                <div class="bg-white rounded-2xl p-6 shadow-xl max-w-3xl mx-auto">
+                    <div class="mb-6">
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="font-semibold">Scenario <span id="scenarioNum">1</span>/2</span>
+                            <span class="font-semibold">Sfida Finale! 🌟</span>
+                        </div>
+                        <div class="w-full bg-gray-200 rounded-full h-3">
+                            <div id="scenarioProgressBar" class="progress-bar bg-purple-500 h-3 rounded-full" style="width: 50%"></div>
+                        </div>
+                    </div>
+                    <div class="mb-8">
+                        <div class="bg-purple-50 rounded-xl p-6 mb-6">
+                            <h3 class="text-xl font-bold text-purple-600 mb-4" id="scenarioTitle"></h3>
+                            <p class="text-gray-700 mb-4" id="scenarioDescription"></p>
+                            <p class="font-semibold text-gray-800" id="scenarioQuestion"></p>
+                        </div>
+                        <div class="space-y-3" id="scenarioOptions"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div id="resultsModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div class="bg-white rounded-2xl p-8 max-w-md mx-4 text-center">
+                <div id="resultsIcon" class="text-6xl mb-4"></div>
+                <h3 id="resultsTitle" class="game-font text-2xl mb-4"></h3>
+                <p id="resultsMessage" class="text-gray-600 mb-6"></p>
+                <div id="resultsScore" class="text-3xl font-bold text-blue-600 mb-6"></div>
+                <button onclick="closeResults()" class="bg-blue-500 hover:bg-blue-600 text-white px-8 py-3 rounded-full font-semibold">
+                    Continua l'Avventura
+                </button>
+            </div>
+        </div>
+    </div>
 
-    // Initialization and game mechanics follow as in the previous messages,
-    // especially ensuring initZone1 calls renderMatchingGame to render data properly
-    // and all other zones are initialized and interactive.
+    <script>
+        const gameData = {
+            totalScore: 0,
+            zoneScores: [0, 0, 0, 0, 0],
+            unlockedZones: [true, false, false, false, false],
+            currentZone: 0,
+            currentQuestion: 0,
+            gameState: {}
+        };
 
-    // For brevity, key Zone 1 functions shown here:
+        const idiomsData = {
+            zone1: [
+                { idiom: "In bocca al lupo", meaning: "Augurio di buona fortuna" },
+                { idiom: "Acqua in bocca", meaning: "Non dire niente, mantenere un segreto" },
+                { idiom: "Prendere due piccioni con una fava", meaning: "Ottenere due risultati con un’unica azione" },
+                { idiom: "Chi dorme non piglia pesci", meaning: "Chi non si impegna non ottiene nulla" },
+                { idiom: "Avere le mani in pasta", meaning: "Essere coinvolto in molte situazioni" },
+                { idiom: "Costa un occhio della testa", meaning: "Essere molto costoso" },
+                { idiom: "Essere al settimo cielo", meaning: "Essere molto felice" },
+                { idiom: "Rompere il ghiaccio", meaning: "Superare l’imbarazzo iniziale" },
+                { idiom: "Gettare la spugna", meaning: "Arrendersi" },
+                { idiom: "Mettere troppa carne al fuoco", meaning: "Fare troppe cose contemporaneamente" }
+            ],
+            zone2: [
+                { idiom: "Non piangere sul latte versato", meaning: "Non serve lamentarsi per qualcosa ormai accaduto", correct: true },
+                { idiom: "Andare a letto con le galline", meaning: "Andare a dormire molto presto", correct: true },
+                { idiom: "Essere al settimo cielo", meaning: "Essere arrabbiato", correct: false },
+                { idiom: "Chi dorme non piglia pesci", meaning: "Chi non agisce non ottiene", correct: true },
+                { idiom: "Prendere lucciole per lanterne", meaning: "Scambiare una cosa per un’altra", correct: true },
+                { idiom: "Fare orecchie da mercante", meaning: "Fingere di non sentire", correct: true },
+                { idiom: "Meglio tardi che mai", meaning: "È meglio che accada tardi piuttosto che mai", correct: true },
+                { idiom: "Tirare il pacco", meaning: "Non presentarsi a un appuntamento senza avvisare", correct: true },
+                { idiom: "Rompere il ghiaccio", meaning: "Interrompere un’amicizia", correct: false },
+                { idiom: "Il gioco non vale la candela", meaning: "Lo sforzo non vale il risultato", correct: true }
+            ],
+            zone3: [
+                { sentence: "Prima dell’esame mi hanno detto: _______!", answer: "In bocca al lupo", options: ["In bocca al lupo", "Acqua in bocca", "Gettare la spugna", "Chi dorme non piglia pesci"] },
+                { sentence: "Non dirlo a nessuno, mi raccomando: _______.", answer: "Acqua in bocca", options: ["Acqua in bocca", "Essere al settimo cielo", "Prendere due piccioni con una fava", "Costa un occhio della testa"] },
+                { sentence: "Comprando casa e ufficio insieme, ha _______.", answer: "Prendere due piccioni con una fava", options: ["Prendere due piccioni con una fava", "Gettare la spugna", "Mettere troppa carne al fuoco", "Fare orecchie da mercante"] },
+                { sentence: "Se non ti dai da fare, ricorda che _______.", answer: "Chi dorme non piglia pesci", options: ["Chi dorme non piglia pesci", "In bocca al lupo", "Costa un occhio della testa", "Rompere il ghiaccio"] },
+                { sentence: "Era troppo difficile, ho dovuto _______.", answer: "Gettare la spugna", options: ["Gettare la spugna", "Essere al settimo cielo", "Mettere troppa carne al fuoco", "Avere le mani in pasta"] }
+            ],
+            zone4: [
+                { idiom: "In bocca al lupo", options: ["Augurio di buona fortuna", "Stai zitto", "Andare a dormire presto", "Arrendersi"], answer: 0 },
+                { idiom: "Acqua in bocca", options: ["Bere acqua", "Mantenere un segreto", "Restare calmo", "Parlare forte"], answer: 1 },
+                { idiom: "Prendere due piccioni con una fava", options: ["Catturare uccelli", "Ottenere due risultati con un’unica azione", "Non fare nulla", "Confondersi"], answer: 1 },
+                { idiom: "Chi dorme non piglia pesci", options: ["Dormire aiuta", "Chi non si impegna non ottiene nulla", "Pescare è facile", "Stare in silenzio"], answer: 1 },
+                { idiom: "Costa un occhio della testa", options: ["Molto economico", "Molto costoso", "Pericoloso", "Noioso"], answer: 1 }
+            ],
+            zone5: [
+                {
+                    title: "Prima dell’esame",
+                    description: "Il tuo amico ti augura buona fortuna prima di entrare in aula.",
+                    question: "Che modo di dire usa?",
+                    options: [
+                        { text: "In bocca al lupo!", idiom: "In bocca al lupo", correct: true },
+                        { text: "Acqua in bocca!", idiom: "Acqua in bocca", correct: false }
+                    ]
+                },
+                {
+                    title: "Segreto Confidato",
+                    description: "Un amico ti racconta una notizia importante ma insiste che tu non la ripeta.",
+                    question: "Che modo di dire usa per fartelo capire?",
+                    options: [
+                        { text: "Mi raccomando, acqua in bocca!", idiom: "Acqua in bocca", correct: true },
+                        { text: "Non prendere due piccioni con una fava!", idiom: "Prendere due piccioni con una fava", correct: false }
+                    ]
+                }
+            ]
+        };
 
-    function initZone1() {
-      const idioms = [...idiomsData.zone1];
-      const meanings = idioms.map(x => x.meaning);
-      for (let i = meanings.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [meanings[i], meanings[j]] = [meanings[j], meanings[i]];
-      }
-      gameData.gameState = { idioms, meanings, matches: {} };
-      renderMatchingGame();
-    }
+        function initGame() {
+            updateDisplay();
+        }
 
-    function renderMatchingGame() {
-      const idiomsCol = document.getElementById('idiomsColumn');
-      const meaningsCol = document.getElementById('meaningsColumn');
-      idiomsCol.innerHTML = '';
-      meaningsCol.innerHTML = '';
+        function updateDisplay() {
+            document.getElementById('totalScore').textContent = gameData.totalScore;
+            document.getElementById('overallProgress').style.width = `${Math.min(gameData.totalScore / 600 * 100, 100)}%`;
+            for (let i = 0; i < 5; i++) {
+                document.getElementById(`zone${i+1}Score`).textContent = `Punteggio: ${gameData.zoneScores[i]}`;
+                const zoneCard = document.querySelector(`[data-zone="${i+1}"]`);
+                const button = zoneCard.querySelector('button');
+                const elements = zoneCard.querySelectorAll('h3, p, span');
+                if (gameData.unlockedZones[i]) {
+                    zoneCard.classList.remove('zone-locked');
+                    elements.forEach(el => {
+                        el.classList.remove('text-gray-400');
+                        if (el.tagName === 'H3') el.classList.add('text-blue-600');
+                        else el.classList.add('text-gray-600', 'text-gray-500');
+                    });
+                    button.textContent = gameData.zoneScores[i] > 0 ? 'Gioca di Nuovo' : 'Inizia l’Avventura';
+                    button.classList.remove('cursor-not-allowed', 'bg-gray-300', 'text-gray-500');
+                    button.classList.add('bg-blue-500', 'hover:bg-blue-600', 'text-white');
+                    button.disabled = false;
+                    button.setAttribute('onclick', `startZone(${i+1})`);
+                } else {
+                    zoneCard.classList.add('zone-locked');
+                    elements.forEach(el => {
+                        el.classList.add('text-gray-400');
+                        el.classList.remove('text-blue-600', 'text-gray-600', 'text-gray-500');
+                    });
+                    button.textContent = '🔒 Bloccato';
+                    button.classList.add('cursor-not-allowed', 'bg-gray-300', 'text-gray-500');
+                    button.classList.remove('bg-blue-500', 'hover:bg-blue-600', 'text-white');
+                    button.disabled = true;
+                    button.removeAttribute('onclick');
+                }
+            }
+            updatePlayerRank();
+        }
 
-      gameData.gameState.idioms.forEach(({ idiom }) => {
-        const elem = document.createElement('div');
-        elem.textContent = idiom;
-        elem.className = 'drag-item bg-blue-100 border-2 border-blue-300 rounded-lg p-3 text-center font-semibold';
-        elem.draggable = true;
-        elem.dataset.idiom = idiom;
-        elem.addEventListener('dragstart', e => e.dataTransfer.setData('text', idiom));
-        idiomsCol.appendChild(elem);
-      });
+        function updatePlayerRank() {
+            const rankElement = document.getElementById('playerRank');
+            if (gameData.totalScore >= 500) {
+                rankElement.textContent = 'Campione 🏆';
+            } else if (gameData.totalScore >= 400) {
+                rankElement.textContent = 'Esploratore 🧭';
+            } else {
+                rankElement.textContent = 'Apprendista 💡';
+            }
+        }
 
-      gameData.gameState.meanings.forEach(meaning => {
-        const elem = document.createElement('div');
-        elem.textContent = meaning;
-        elem.className = 'drop-zone bg-gray-50 border-2 border-gray-300 rounded-lg p-3 flex items-center justify-center';
-        elem.dataset.meaning = meaning;
-        elem.addEventListener('dragover', e => { e.preventDefault(); elem.classList.add('drag-over'); });
-        elem.addEventListener('drop', e => {
-          e.preventDefault();
-          elem.classList.remove('drag-over');
-          const dragged = e.dataTransfer.getData('text');
-          gameData.gameState.matches[dragged] = elem.dataset.meaning;
-          elem.innerHTML = `<div class="font-semibold text-blue-600">${dragged}</div><div class="text-sm text-gray-600">${elem.dataset.meaning}</div>`;
-          elem.classList.add('bg-blue-50','border-blue-400');
-          const dragElem = document.querySelector(`[data-idiom="${dragged}"]`);
-          if(dragElem) dragElem.style.opacity = '0.3';
-          updateMatchProgress();
-        });
-        meaningsCol.appendChild(elem);
-      });
-    }
+        function startZone(zoneNum) {
+            gameData.currentZone = zoneNum;
+            gameData.currentQuestion = 0;
+            document.getElementById('mainMenu').classList.add('hidden');
+            document.getElementById('gameScreen').classList.remove('hidden');
+            for (let i = 1; i <= 5; i++) {
+                document.getElementById(`zone${i}Game`).classList.add('hidden');
+            }
+            document.getElementById(`zone${zoneNum}Game`).classList.remove('hidden');
+            const zoneInfo = {
+                1: { title: '🏖️ Baia degli Abbinamenti', desc: 'Abbina i modi di dire ai loro significati' },
+                2: { title: '⛰️ Scogliere dell’Inganno', desc: 'Sfide Vero o Falso' },
+                3: { title: '💎 Tesoro Nascosto', desc: 'Completa le frasi' },
+                4: { title: '⚡ Laguna dei Fulmini', desc: 'Quiz a raffica' },
+                5: { title: '🌀 Labirinto dei Modi di Dire', desc: 'Sfide con scenari' }
+            };
+            document.getElementById('zoneTitle').textContent = zoneInfo[zoneNum].title;
+            document.getElementById('zoneDescription').textContent = zoneInfo[zoneNum].desc;
+            document.getElementById('currentScore').textContent = '0';
+            switch(zoneNum) {
+                case 1: initZone1(); break;
+                case 2: initZone2(); break;
+                case 3: initZone3(); break;
+                case 4: initZone4(); break;
+                case 5: initZone5(); break;
+            }
+        }
 
-    function updateMatchProgress() {
-      const matchCount = Object.keys(gameData.gameState.matches).length;
-      document.getElementById('matchProgress').textContent = `${matchCount}/10`;
-      document.getElementById('matchProgressBar').style.width = `${matchCount * 10}%`;
-    }
+        function initZone1() {
+            const idioms = [...idiomsData.zone1];
+            const meanings = idioms.map(item => item.meaning).sort(() => Math.random() - 0.5);
+            gameData.gameState = { idioms, meanings, matches: {} };
+            document.getElementById('matchProgress').textContent = `0/${idioms.length}`;
+            document.getElementById('matchProgressBar').style.width = '0%';
+            renderMatchingGame();
+        }
 
-    // Additional functions for Zones 2-5 initialization, gameplay, scoring, modal results,
-    // navigation etc., are implemented to be fully interactive with the Italian data.
+        function renderMatchingGame() {
+            const idiomsColumn = document.getElementById('idiomsColumn');
+            const meaningsColumn = document.getElementById('meaningsColumn');
+            idiomsColumn.innerHTML = '';
+            meaningsColumn.innerHTML = '';
+            gameData.gameState.idioms.forEach(item => {
+                const idiomDiv = document.createElement('div');
+                idiomDiv.className = 'drag-item bg-blue-100 border-2 border-blue-300 rounded-lg p-3 text-center';
+                idiomDiv.draggable = true;
+                idiomDiv.textContent = item.idiom;
+                idiomDiv.dataset.idiom = item.idiom;
+                idiomDiv.addEventListener('dragstart', e => e.dataTransfer.setData('text/plain', item.idiom));
+                idiomsColumn.appendChild(idiomDiv);
+            });
+            gameData.gameState.meanings.forEach(meaning => {
+                const meaningDiv = document.createElement('div');
+                meaningDiv.className = 'drop-zone bg-gray-50 border-2 border-gray-300 rounded-lg p-3 flex items-center justify-center';
+                meaningDiv.dataset.meaning = meaning;
+                meaningDiv.textContent = meaning;
+                meaningDiv.addEventListener('dragover', e => { e.preventDefault(); e.currentTarget.classList.add('drag-over'); });
+                meaningDiv.addEventListener('dragleave', e => e.currentTarget.classList.remove('drag-over'));
+                meaningDiv.addEventListener('drop', e => {
+                    e.preventDefault();
+                    e.currentTarget.classList.remove('drag-over');
+                    const idiom = e.dataTransfer.getData('text/plain');
+                    if (!idiom) return;
+                    const oldIdiom = Object.keys(gameData.gameState.matches).find(key => gameData.gameState.matches[key] === meaning);
+                    if (oldIdiom) {
+                        delete gameData.gameState.matches[oldIdiom];
+                        document.querySelector(`[data-idiom="${oldIdiom}"]`).style.opacity = '1';
+                    }
+                    gameData.gameState.matches[idiom] = meaning;
+                    e.currentTarget.innerHTML = `<div class="font-semibold text-blue-800">${idiom}</div>`;
+                    e.currentTarget.classList.add('bg-blue-50', 'border-blue-400');
+                    document.querySelector(`[data-idiom="${idiom}"]`).style.opacity = '0.3';
+                    updateMatchProgress();
+                });
+                meaningsColumn.appendChild(meaningDiv);
+            });
+        }
 
-    function startZone(z) {
-      // Standard per-zone init as above, calling initZoneX etc.
-    }
+        function updateMatchProgress() {
+            const matchCount = Object.keys(gameData.gameState.matches).length;
+            document.getElementById('matchProgress').textContent = `${matchCount}/${gameData.gameState.idioms.length}`;
+            document.getElementById('matchProgressBar').style.width = `${(matchCount / gameData.gameState.idioms.length) * 100}%`;
+        }
 
-    function returnToMenu() {
-      document.getElementById('gameScreen').classList.add('hidden');
-      document.getElementById('mainMenu').classList.remove('hidden');
-      updateDisplay();
-    }
+        function checkMatches() {
+            let correctMatches = 0;
+            gameData.gameState.idioms.forEach(item => {
+                const matchedMeaning = gameData.gameState.matches[item.idiom];
+                const isCorrect = matchedMeaning === item.meaning;
+                if (isCorrect) correctMatches++;
+                const dropZone = document.querySelector(`[data-meaning="${matchedMeaning}"]`);
+                if (dropZone) dropZone.classList.add(isCorrect ? 'correct-match' : 'wrong-match');
+            });
+            const score = correctMatches * 10;
+            gameData.zoneScores[0] = score;
+            gameData.totalScore += score;
+            if (correctMatches >= 8) gameData.unlockedZones[1] = true;
+            showResults(1, score, correctMatches, gameData.gameState.idioms.length);
+        }
 
-    function checkMatches() {
-      // Calculate correct matches and score as previously outlined,
-      // ignoring replay score increments after first completion
-    }
+        function initZone2() {
+            gameData.gameState = {
+                questions: [...idiomsData.zone2].sort(() => Math.random() - 0.5),
+                currentQ: 0,
+                score: 0,
+                lives: 3,
+                correctAnswers: 0
+            };
+            showTrueFalseQuestion();
+        }
 
-    // Call initGame on load
+        function showTrueFalseQuestion() {
+            const state = gameData.gameState;
+            const question = state.questions[state.currentQ];
+            document.getElementById('tfQuestionNum').textContent = state.currentQ + 1;
+            document.getElementById('livesCount').textContent = '❤️'.repeat(state.lives);
+            document.getElementById('tfIdiom').textContent = question.idiom;
+            document.getElementById('tfDefinition').textContent = `Significato: "${question.meaning}"`;
+            document.getElementById('tfProgressBar').style.width = `${((state.currentQ + 1) / state.questions.length) * 100}%`;
+        }
 
-    window.onload = () => initGame();
+        function answerTrueFalse(userAnswer) {
+            const state = gameData.gameState;
+            if (state.currentQ >= state.questions.length) return;
+            const question = state.questions[state.currentQ];
+            if (userAnswer === question.correct) {
+                state.score += 10;
+                state.correctAnswers++;
+            } else {
+                state.lives--;
+            }
+            document.getElementById('currentScore').textContent = state.score;
+            state.currentQ++;
+            if (state.lives <= 0) {
+                gameData.zoneScores[1] = state.score;
+                gameData.totalScore += state.score;
+                showResults(2, state.score, state.correctAnswers, state.questions.length, true);
+                return;
+            }
+            if (state.currentQ >= state.questions.length) {
+                gameData.zoneScores[1] = state.score;
+                gameData.totalScore += state.score;
+                if (state.correctAnswers >= 8) gameData.unlockedZones[2] = true;
+                showResults(2, state.score, state.correctAnswers, state.questions.length);
+            } else {
+                showTrueFalseQuestion();
+            }
+        }
+        
+        function initZone3() {
+            gameData.gameState = {
+                questions: [...idiomsData.zone3].sort(() => Math.random() - 0.5),
+                currentQ: 0,
+                score: 0,
+                correctAnswers: 0
+            };
+            showFillBlankQuestion();
+        }
 
-  </script>
+        function showFillBlankQuestion() {
+            const state = gameData.gameState;
+            const question = state.questions[state.currentQ];
+            document.getElementById('fibQuestionNum').textContent = state.currentQ + 1;
+            document.getElementById('fibSentence').textContent = question.sentence;
+            document.getElementById('fibProgressBar').style.width = `${((state.currentQ + 1) / state.questions.length) * 100}%`;
+            const select = document.getElementById('fibSelect');
+            select.innerHTML = '<option value="">Scegli...</option>';
+            question.options.sort(() => Math.random() - 0.5).forEach(option => {
+                const optionEl = document.createElement('option');
+                optionEl.value = option;
+                optionEl.textContent = option;
+                select.appendChild(optionEl);
+            });
+            document.getElementById('bonusSentence').value = '';
+            document.getElementById('bonusSentence').disabled = false;
+        }
+
+        function submitFillBlank() {
+            const state = gameData.gameState;
+            if (state.currentQ >= state.questions.length) return;
+            const question = state.questions[state.currentQ];
+            const userAnswer = document.getElementById('fibSelect').value;
+            if (!userAnswer) {
+                alert('Per favore, scegli un modo di dire!');
+                return;
+            }
+            if (userAnswer === question.answer) {
+                state.score += 15;
+                state.correctAnswers++;
+            }
+            document.getElementById('currentScore').textContent = state.score;
+            state.currentQ++;
+            if (state.currentQ >= state.questions.length) {
+                gameData.zoneScores[2] = state.score;
+                gameData.totalScore += state.score;
+                if (state.correctAnswers >= 4) gameData.unlockedZones[3] = true;
+                showResults(3, state.score, state.correctAnswers, state.questions.length);
+            } else {
+                showFillBlankQuestion();
+            }
+        }
+
+        function submitBonus() {
+            const bonusText = document.getElementById('bonusSentence').value.trim();
+            if (bonusText.length > 10) {
+                gameData.gameState.score += 5;
+                document.getElementById('currentScore').textContent = gameData.gameState.score;
+                alert('Punti bonus assegnati! +5');
+                document.getElementById('bonusSentence').value = '';
+                document.getElementById('bonusSentence').disabled = true;
+            } else {
+                alert('Per favore, scrivi una frase più lunga per ottenere punti bonus!');
+            }
+        }
+
+        function initZone4() {
+            gameData.gameState = {
+                questions: [...idiomsData.zone4].sort(() => Math.random() - 0.5),
+                currentQ: 0,
+                score: 0,
+                timeLeft: 60,
+                correctAnswers: 0,
+                timer: null
+            };
+            document.getElementById('timerDisplay').classList.remove('hidden');
+            document.getElementById('lrTimer').classList.remove('timer-warning');
+            document.getElementById('lrTimer').textContent = gameData.gameState.timeLeft;
+            gameData.gameState.timer = setInterval(() => {
+                gameData.gameState.timeLeft--;
+                document.getElementById('lrTimer').textContent = gameData.gameState.timeLeft;
+                if (gameData.gameState.timeLeft <= 10) {
+                    document.getElementById('lrTimer').classList.add('timer-warning');
+                }
+                if (gameData.gameState.timeLeft <= 0) {
+                    finishLightningRound();
+                }
+            }, 1000);
+            showLightningQuestion();
+        }
+
+        function showLightningQuestion() {
+            const state = gameData.gameState;
+            const question = state.questions[state.currentQ];
+            document.getElementById('lrQuestionNum').textContent = state.currentQ + 1;
+            document.getElementById('lrIdiom').textContent = question.idiom;
+            document.getElementById('lrProgressBar').style.width = `${((state.currentQ + 1) / state.questions.length) * 100}%`;
+            const optionsContainer = document.getElementById('lrOptions');
+            optionsContainer.innerHTML = '';
+            question.options.forEach((option, index) => {
+                const button = document.createElement('button');
+                button.className = 'bg-yellow-100 hover:bg-yellow-200 border-2 border-yellow-300 rounded-lg p-4 font-semibold';
+                button.textContent = option;
+                button.onclick = () => answerLightning(index);
+                optionsContainer.appendChild(button);
+            });
+        }
+
+        function answerLightning(selectedIndex) {
+            const state = gameData.gameState;
+            if (state.currentQ >= state.questions.length) return;
+            const question = state.questions[state.currentQ];
+            if (selectedIndex === question.answer) {
+                state.score += 10 + Math.floor(state.timeLeft / 10);
+                state.correctAnswers++;
+            }
+            document.getElementById('currentScore').textContent = state.score;
+            state.currentQ++;
+            if (state.currentQ >= state.questions.length) {
+                finishLightningRound();
+            } else {
+                showLightningQuestion();
+            }
+        }
+
+        function finishLightningRound() {
+            const state = gameData.gameState;
+            clearInterval(state.timer);
+            document.getElementById('timerDisplay').classList.add('hidden');
+            gameData.zoneScores[3] = state.score;
+            gameData.totalScore += state.score;
+            if (state.correctAnswers >= 4) gameData.unlockedZones[4] = true;
+            showResults(4, state.score, state.correctAnswers, state.questions.length);
+        }
+
+        function initZone5() {
+            gameData.gameState = {
+                scenarios: [...idiomsData.zone5].sort(() => Math.random() - 0.5),
+                currentS: 0,
+                score: 0,
+                correctAnswers: 0
+            };
+            showScenario();
+        }
+
+        function showScenario() {
+            const state = gameData.gameState;
+            const scenario = state.scenarios[state.currentS];
+            document.getElementById('scenarioNum').textContent = state.currentS + 1;
+            document.getElementById('scenarioTitle').textContent = scenario.title;
+            document.getElementById('scenarioDescription').textContent = scenario.description;
+            document.getElementById('scenarioQuestion').textContent = scenario.question;
+            document.getElementById('scenarioProgressBar').style.width = `${((state.currentS + 1) / state.scenarios.length) * 100}%`;
+            const optionsContainer = document.getElementById('scenarioOptions');
+            optionsContainer.innerHTML = '';
+            scenario.options.forEach((option, index) => {
+                const button = document.createElement('button');
+                button.className = 'bg-purple-100 hover:bg-purple-200 border-2 border-purple-300 rounded-lg p-4 text-left w-full';
+                button.innerHTML = `<div class="font-semibold">${option.text}</div><div class="text-sm text-gray-600 mt-1">Usando: "${option.idiom}"</div>`;
+                button.onclick = () => answerScenario(index);
+                optionsContainer.appendChild(button);
+            });
+        }
+
+        function answerScenario(selectedIndex) {
+            const state = gameData.gameState;
+            if (state.currentS >= state.scenarios.length) return;
+            const scenario = state.scenarios[state.currentS];
+            if (scenario.options[selectedIndex].correct) {
+                state.score += 25;
+                state.correctAnswers++;
+            }
+            document.getElementById('currentScore').textContent = state.score;
+            state.currentS++;
+            if (state.currentS >= state.scenarios.length) {
+                gameData.zoneScores[4] = state.score;
+                gameData.totalScore += state.score;
+                showResults(5, state.score, state.correctAnswers, state.scenarios.length);
+            } else {
+                showScenario();
+            }
+        }
+
+        function showResults(zone, score, correct, total, gameOver = false) {
+            const modal = document.getElementById('resultsModal');
+            const icon = document.getElementById('resultsIcon');
+            const title = document.getElementById('resultsTitle');
+            const message = document.getElementById('resultsMessage');
+            const scoreDisplay = document.getElementById('resultsScore');
+            const percentage = total > 0 ? Math.round((correct / total) * 100) : 0;
+            if (gameOver) {
+                icon.textContent = '💔';
+                title.textContent = 'Fine del Gioco!';
+                message.textContent = `Hai esaurito le vite. Fai più pratica e riprova!`;
+            } else if (percentage >= 80) {
+                icon.textContent = '🎉';
+                title.textContent = 'Lavoro Eccellente!';
+                message.textContent = `Hai superato questa zona con il ${percentage}% di precisione!`;
+            } else if (percentage >= 50) {
+                icon.textContent = '👍';
+                title.textContent = 'Buon Lavoro!';
+                message.textContent = `Hai risposto correttamente al ${percentage}%. Continua a praticare!`;
+            } else {
+                icon.textContent = '💪';
+                title.textContent = 'Continua a Provare!';
+                message.textContent = `Hai risposto correttamente al ${percentage}%. La pratica rende perfetti!`;
+            }
+            scoreDisplay.textContent = `+${score} punti`;
+            modal.classList.remove('hidden');
+        }
+
+        function closeResults() {
+            document.getElementById('resultsModal').classList.add('hidden');
+            returnToMenu();
+        }
+
+        function returnToMenu() {
+            document.getElementById('gameScreen').classList.add('hidden');
+            document.getElementById('mainMenu').classList.remove('hidden');
+            updateDisplay();
+        }
+
+        document.addEventListener('DOMContentLoaded', initGame);
+    </script>
 </body>
 </html>
